@@ -1,0 +1,12 @@
+<svg width="232" height="32" viewBox="0 0 232 32" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">CampusBloom inverted logo</title>
+  <desc id="desc">A geometric shield outline with centered star and white CampusBloom wordmark for dark backgrounds.</desc>
+  <g transform="translate(1 1)">
+    <rect x="0" y="0" width="30" height="30" rx="9" fill="rgba(248,250,252,0.06)" stroke="rgba(248,250,252,0.18)"/>
+    <path d="M15 4.6L23.1 8.2V14.7C23.1 20 19.5 23.4 15 25.5C10.5 23.4 6.9 20 6.9 14.7V8.2L15 4.6Z" stroke="#FFFFFF" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M15 9.3L16.5 12.2L19.7 12.7L17.3 14.9L17.9 18.1L15 16.6L12.1 18.1L12.7 14.9L10.3 12.7L13.5 12.2L15 9.3Z" fill="#F8FAFC"/>
+  </g>
+  <text x="42" y="20.8" fill="#FFFFFF" font-family="Inter, Poppins, Arial, sans-serif" font-size="15.5" font-weight="700" letter-spacing="-0.02em">
+    <tspan>Campus</tspan><tspan fill="#FFFFFF" font-weight="800">Bloom</tspan>
+  </text>
+</svg>

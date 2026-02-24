@@ -1,0 +1,22 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="CampusBloom icon">
+  <title>CampusBloom Icon</title>
+  <desc>Icon-only CampusBloom logo with CB monogram and growth motif.</desc>
+
+  <rect width="512" height="512" fill="#FFFFFF"/>
+
+  <rect x="60" y="60" width="392" height="392" rx="92" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="4"/>
+  <circle cx="256" cy="256" r="142" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="4"/>
+
+  <path d="M256 114C307.1 114 352.7 140.4 379.5 182" stroke="#4F46E5" stroke-width="16" stroke-linecap="round"/>
+  <path d="M396 256C396 333.3 333.3 396 256 396C215.8 396 179.6 379.1 154.1 351.7" stroke="#10B981" stroke-width="16" stroke-linecap="round"/>
+
+  <rect x="145" y="145" width="222" height="222" rx="50" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="4"/>
+  <text x="171" y="301" fill="#4F46E5" font-family="Inter, Poppins, Arial, sans-serif" font-size="124" font-weight="800" letter-spacing="-5">CB</text>
+
+  <path d="M288 333L330 291" stroke="#10B981" stroke-width="14" stroke-linecap="round"/>
+  <path d="M330 291V320" stroke="#10B981" stroke-width="14" stroke-linecap="round"/>
+  <path d="M330 291H301" stroke="#10B981" stroke-width="14" stroke-linecap="round"/>
+  <path d="M313 265C326 252 347 251 360 264C347 277 326 278 313 265Z" fill="#10B981"/>
+
+  <path d="M352 207L359 221L374 223L363 233L366 248L352 240L338 248L341 233L330 223L345 221L352 207Z" fill="#F59E0B"/>
+</svg>
