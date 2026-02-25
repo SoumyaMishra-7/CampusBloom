@@ -11,7 +11,7 @@ const roleMeta = {
       email: "student@demo.campusbloom.com",
       identifier: "CB-STU-001",
       password: "student123",
-      redirectTo: "student-dashboard.html"
+      redirectTo: "/student-dashboard"
     }
   },
   admin: {
@@ -24,7 +24,7 @@ const roleMeta = {
       email: "admin@demo.campusbloom.com",
       identifier: "CB-ADM-001",
       password: "admin123",
-      redirectTo: "admin-dashboard.html"
+      redirectTo: "/admin-dashboard"
     }
   }
 };
@@ -601,7 +601,7 @@ function LoginPage() {
                       Demo routing
                     </p>
                     <p className="mt-2 text-sm leading-6 text-slate-200">
-                      Student demo redirects to `student-dashboard.html`, and admin demo redirects to `admin-dashboard.html`.
+                      Student demo redirects to `/student-dashboard`, and admin demo redirects to `/admin-dashboard`.
                     </p>
                   </div>
                 </div>

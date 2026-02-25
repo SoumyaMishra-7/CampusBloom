@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const navItems = [
-  { label: "Dashboard", view: "dashboard", href: "student-dashboard.html" },
-  { label: "My Achievements", view: "achievements", href: "student-achievements.html" },
-  { label: "Timeline", view: "timeline", href: "student-timeline.html" },
-  { label: "Certificates", view: "certificates", href: "student-certificates.html" },
-  { label: "Public Profile", view: "public-profile", href: "student-public-profile.html" },
-  { label: "Settings", view: "settings", href: "student-settings.html" }
+  { label: "Dashboard", view: "dashboard", href: "/student-dashboard" },
+  { label: "My Achievements", view: "achievements", href: "/student-achievements" },
+  { label: "Timeline", view: "timeline", href: "/student-timeline" },
+  { label: "Certificates", view: "certificates", href: "/student-certificates" },
+  { label: "Public Profile", view: "public-profile", href: "/student-public-profile" },
+  { label: "Settings", view: "settings", href: "/student-settings" }
 ];
 
 const stats = [
@@ -464,7 +464,7 @@ function StudentDashboard({ initialView = "dashboard" }) {
     <div className={`sd-app ${darkMode ? "sd-dark" : ""} ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
       <aside className="sd-sidebar">
         <div className="sd-sidebar-top">
-          <a href="student-dashboard.html" className="sd-logo">
+          <a href="/student-dashboard" className="sd-logo">
             <span className="sd-logo-mark">
               <img src="/brand/campusbloom-icon-inverted.svg" alt="" aria-hidden="true" />
             </span>
@@ -602,7 +602,7 @@ function StudentDashboard({ initialView = "dashboard" }) {
                   A structured view of extracurricular growth across technical, sports, cultural, and leadership activities.
                 </p>
               </div>
-              <a href="login.html" className="primary-btn">
+              <a href="/login" className="primary-btn">
                 Switch Account
               </a>
             </section>

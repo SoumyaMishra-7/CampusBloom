@@ -3,12 +3,12 @@ import { useEffect, useMemo, useState } from "react";
 const tabs = ["Profile", "Privacy", "Notifications", "Account", "Appearance"];
 
 const navItems = [
-  { label: "Dashboard", href: "student-dashboard.html" },
-  { label: "My Achievements", href: "student-achievements.html" },
-  { label: "Timeline", href: "student-timeline.html" },
-  { label: "Certificates", href: "student-certificates.html" },
-  { label: "Public Profile", href: "student-public-profile.html" },
-  { label: "Settings", href: "student-settings.html" }
+  { label: "Dashboard", href: "/student-dashboard" },
+  { label: "My Achievements", href: "/student-achievements" },
+  { label: "Timeline", href: "/student-timeline" },
+  { label: "Certificates", href: "/student-certificates" },
+  { label: "Public Profile", href: "/student-public-profile" },
+  { label: "Settings", href: "/student-settings" }
 ];
 
 function Icon({ type }) {
@@ -197,7 +197,7 @@ function StudentSettingsPage() {
     <div className={`ss-app ${pageThemeDark ? "ss-dark" : ""} ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
       <aside className="ss-sidebar">
         <div className="ss-sidebar-top">
-          <a href="student-dashboard.html" className="ss-logo">
+          <a href="/student-dashboard" className="ss-logo">
             <span className="ss-logo-mark">
               <img src="/brand/campusbloom-icon-inverted.svg" alt="" aria-hidden="true" />
             </span>
@@ -230,7 +230,7 @@ function StudentSettingsPage() {
             <button type="button" className="ss-icon-btn" onClick={() => setPageThemeDark((v) => !v)} aria-label="Toggle theme">
               <Icon type={pageThemeDark ? "sun" : "moon"} />
             </button>
-            <a href="student-dashboard.html" className="ss-avatar-chip">SM</a>
+            <a href="/student-dashboard" className="ss-avatar-chip">SM</a>
           </div>
         </header>
 
@@ -422,7 +422,7 @@ function StudentSettingsPage() {
                           <h3>Session & Account Actions</h3>
                         </div>
                         <div className="ss-danger-actions">
-                          <a href="login.html" className="ss-btn ss-outline">Logout</a>
+                          <a href="/login" className="ss-btn ss-outline">Logout</a>
                           <button type="button" className="ss-btn ss-danger" onClick={() => setDeleteConfirmOpen(true)}>Delete Account</button>
                         </div>
                       </section>

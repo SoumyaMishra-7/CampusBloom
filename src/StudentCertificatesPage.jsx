@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const navItems = [
-  { label: "Dashboard", href: "student-dashboard.html" },
-  { label: "My Achievements", href: "student-achievements.html" },
-  { label: "Timeline", href: "student-timeline.html" },
-  { label: "Certificates", href: "student-certificates.html" },
-  { label: "Public Profile", href: "student-public-profile.html" },
-  { label: "Settings", href: "student-settings.html" }
+  { label: "Dashboard", href: "/student-dashboard" },
+  { label: "My Achievements", href: "/student-achievements" },
+  { label: "Timeline", href: "/student-timeline" },
+  { label: "Certificates", href: "/student-certificates" },
+  { label: "Public Profile", href: "/student-public-profile" },
+  { label: "Settings", href: "/student-settings" }
 ];
 
 const initialCertificates = [
@@ -19,7 +19,7 @@ const initialCertificates = [
     type: "PDF",
     sizeMB: 1.8,
     status: "Verified",
-    achievementLink: "student-achievements.html",
+    achievementLink: "/student-achievements",
     remarks: "Verified by Innovation Cell and faculty mentor.",
     previewKind: "pdf"
   },
@@ -32,7 +32,7 @@ const initialCertificates = [
     type: "Image",
     sizeMB: 2.4,
     status: "Verified",
-    achievementLink: "student-achievements.html",
+    achievementLink: "/student-achievements",
     remarks: "Uploaded scorecard and participation certificate validated.",
     previewKind: "image"
   },
@@ -45,7 +45,7 @@ const initialCertificates = [
     type: "PDF",
     sizeMB: 1.3,
     status: "Pending",
-    achievementLink: "student-achievements.html",
+    achievementLink: "/student-achievements",
     remarks: "Awaiting department coordinator verification remarks.",
     previewKind: "pdf"
   },
@@ -58,7 +58,7 @@ const initialCertificates = [
     type: "Image",
     sizeMB: 3.1,
     status: "Verified",
-    achievementLink: "student-achievements.html",
+    achievementLink: "/student-achievements",
     remarks: "Committee approval verified with organizing team signatures.",
     previewKind: "image"
   }
@@ -205,7 +205,7 @@ function StudentCertificatesPage() {
             type: isPdf ? "PDF" : "Image",
             sizeMB,
             status: "Pending",
-            achievementLink: "student-achievements.html",
+            achievementLink: "/student-achievements",
             remarks: "Awaiting admin review and verification remarks.",
             previewKind: isPdf ? "pdf" : "image"
           },
@@ -250,7 +250,7 @@ function StudentCertificatesPage() {
     <div className={`cc-app ${darkMode ? "cc-dark" : ""} ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
       <aside className="cc-sidebar">
         <div className="cc-sidebar-top">
-          <a href="student-dashboard.html" className="cc-logo">
+          <a href="/student-dashboard" className="cc-logo">
             <span className="cc-logo-mark">
               <img src="/brand/campusbloom-icon-inverted.svg" alt="" aria-hidden="true" />
             </span>
@@ -291,7 +291,7 @@ function StudentCertificatesPage() {
             <button type="button" className="cc-icon-btn" aria-label="Notifications">
               <Icon type="bell" />
             </button>
-            <a href="student-dashboard.html" className="cc-profile-chip">SM</a>
+            <a href="/student-dashboard" className="cc-profile-chip">SM</a>
           </div>
         </header>
 

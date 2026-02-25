@@ -202,13 +202,13 @@ function StudentPublicProfile() {
     <div className="pp-page">
       <header className="pp-topnav">
         <div className="pp-container pp-topnav-inner">
-          <a href="student-dashboard.html" className="pp-brand">
+          <a href="/student-dashboard" className="pp-brand">
             <span className="pp-brand-mark">
               <img src="/brand/campusbloom-icon-primary.svg" alt="" aria-hidden="true" />
             </span>
             <span>CampusBloom</span>
           </a>
-          <a href="student-dashboard.html" className="pp-back-btn">
+          <a href="/student-dashboard" className="pp-back-btn">
             Back to Dashboard
           </a>
         </div>

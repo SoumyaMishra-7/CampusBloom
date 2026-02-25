@@ -375,7 +375,7 @@ export default function AdminDashboard() {
     <div className={shellClass}>
       <aside className="ad-sidebar" aria-label="Admin navigation">
         <div className="ad-side-top">
-          <a href="admin-dashboard.html" className="brand">
+          <a href="/admin-dashboard" className="brand">
             <div className="mark">
               <img src="/brand/campusbloom-icon-inverted.svg" alt="" aria-hidden="true" />
             </div>

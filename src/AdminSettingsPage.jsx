@@ -223,7 +223,7 @@ export default function AdminSettingsPage({ initialTab = "profile" }) {
       try {
         localStorage.setItem("cb.admin.lastLogout", new Date().toISOString());
       } catch {}
-      window.location.href = "login.html";
+      window.location.href = "/login";
     }, 950);
   };
 
