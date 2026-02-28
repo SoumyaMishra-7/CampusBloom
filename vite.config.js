@@ -10,6 +10,7 @@ export default defineConfig({
         index: resolve(__dirname, "index.html"),
         homepage: resolve(__dirname, "homepage.html"),
         login: resolve(__dirname, "login.html"),
+        signup: resolve(__dirname, "signup.html"),
         getStarted: resolve(__dirname, "get-started.html"),
         adminDashboard: resolve(__dirname, "admin-dashboard.html"),
         studentDashboard: resolve(__dirname, "student-dashboard.html"),

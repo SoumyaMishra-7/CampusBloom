@@ -184,8 +184,8 @@ function Homepage() {
           <nav className="nav-links" aria-label="Primary">
             <a href="#features">Features</a>
             <a href="#how-it-works">How It Works</a>
-            <a href="login.html">Login</a>
-            <a href="get-started.html" className="btn primary small">
+            <a href="/login">Login</a>
+            <a href="/signup" className="btn primary small">
               Get Started
             </a>
           </nav>
@@ -215,7 +215,7 @@ function Homepage() {
               </p>
 
               <div className="hero-actions">
-                <a href="get-started.html" className="btn primary glow">
+                <a href="/signup" className="btn primary glow">
                   Get Started
                 </a>
                 <a href="#features" className="btn ghost">
@@ -387,7 +387,7 @@ function Homepage() {
               <li>Portfolio outputs that highlight leadership, skill, and participation</li>
               <li>Reporting-friendly structure for accreditation and institutional review</li>
             </ul>
-            <a href="login.html" className="btn primary glow">See It in Action</a>
+            <a href="/login" className="btn primary glow">See It in Action</a>
           </div>
         </section>
 
@@ -417,7 +417,7 @@ function Homepage() {
                 Launch a modern extracurricular achievement management and portfolio experience for your institution.
               </p>
               <div className="cta-actions">
-                <a href="get-started.html" className="btn primary glow">Get Started</a>
+                <a href="/signup" className="btn primary glow">Get Started</a>
                 <a href="#top" className="btn ghost">Back to Top</a>
               </div>
             </div>
@@ -439,7 +439,7 @@ function Homepage() {
           <div className="footer-links">
             <a href="#features">Features</a>
             <a href="#how-it-works">How It Works</a>
-            <a href="login.html">Login</a>
+            <a href="/login">Login</a>
           </div>
         </div>
       </footer>

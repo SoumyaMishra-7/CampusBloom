@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
+import Homepage from "./Homepage.jsx";
 import LoginPage from "./LoginPage.jsx";
 import StudentDashboard from "./StudentDashboard.jsx";
 import StudentCertificatesPage from "./StudentCertificatesPage.jsx";
@@ -15,7 +16,26 @@ import "./student-settings.css";
 import "./admin-dashboard.css";
 
 function StudentRoutes() {
-  const path = window.location.pathname.replace(/\/+$/, "") || "/";
+  const rawPath = window.location.pathname.replace(/\/+$/, "") || "/";
+  const pathAliases = {
+    "/index.html": "/",
+    "/homepage.html": "/",
+    "/login.html": "/login",
+    "/get-started.html": "/signup"
+  };
+  const path = pathAliases[rawPath] || rawPath;
+
+  if (path !== rawPath) {
+    window.history.replaceState({}, "", path);
+  }
+
+  if (path === "/") {
+    return <Homepage />;
+  }
+
+  if (path === "/signup" || path === "/get-started") {
+    return <App />;
+  }
 
   if (path === "/student-dashboard") {
     return <StudentDashboard initialView="dashboard" />;
@@ -49,7 +69,7 @@ function StudentRoutes() {
     return <AdminDashboard />;
   }
 
-  return <App />;
+  return <Homepage />;
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(
