@@ -1,72 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-
-const stats = [
-  ["Total Achievements", 148],
-  ["Awards Won", 32],
-  ["Participation Events", 96],
-  ["Certificates Uploaded", 64]
-];
-
-const achievements = [
-  {
-    title: "Smart Campus IoT Hackathon Winner",
-    category: "Technical",
-    level: "National",
-    date: "Feb 12, 2026",
-    description: "Led a team to build an IoT-driven campus energy optimization prototype with real-time sensor monitoring.",
-    featured: true
-  },
-  {
-    title: "Intercollege Basketball Tournament Finalist",
-    category: "Sports",
-    level: "College",
-    date: "Jan 28, 2026",
-    description: "Represented department team and contributed in semifinals and finals with strategic coordination.",
-    featured: true
-  },
-  {
-    title: "State Cultural Fusion Performance",
-    category: "Cultural",
-    level: "State",
-    date: "Jan 15, 2026",
-    description: "Performed in a multidisciplinary cultural showcase combining classical and contemporary formats.",
-    featured: true
-  },
-  {
-    title: "Student Council Event Lead",
-    category: "Leadership",
-    level: "College",
-    date: "Dec 20, 2025",
-    description: "Managed inter-department event planning, volunteer coordination, and execution logistics."
-  },
-  {
-    title: "Open Source Contribution Sprint",
-    category: "Technical",
-    level: "State",
-    date: "Dec 05, 2025",
-    description: "Contributed UI improvements and bug fixes to a student-led open-source initiative."
-  },
-  {
-    title: "Track & Field 400m Finals",
-    category: "Sports",
-    level: "State",
-    date: "Nov 19, 2025",
-    description: "Qualified for the state finals and maintained consistent performance across heats."
-  }
-];
-
-const timeline = [
-  ["Feb 2026", "National Hackathon Winner", "Technical"],
-  ["Jan 2026", "Intercollege Basketball Finalist", "Sports"],
-  ["Jan 2026", "State Cultural Performance", "Cultural"],
-  ["Dec 2025", "Student Council Event Lead", "Leadership"]
-];
-
-const badges = [
-  { label: "Gold - Innovation", tone: "gold" },
-  { label: "Silver - Leadership", tone: "silver" },
-  { label: "Bronze - Consistency", tone: "bronze" }
-];
+import { apiGet, apiPost, apiPut } from "./api";
+import { downloadPortfolioPdf } from "./downloads";
 
 const categoryClass = {
   Technical: "pp-cat-technical",
@@ -114,10 +48,20 @@ function Counter({ value }) {
 
 function StudentPublicProfile() {
   const [tab, setTab] = useState("All");
-  const [isPublic, setIsPublic] = useState(true);
+  const [profile, setProfile] = useState(null);
+  const [settings, setSettings] = useState(null);
   const [toast, setToast] = useState("");
   const [bannerOffset, setBannerOffset] = useState(0);
   const [ownerView] = useState(true);
+
+  useEffect(() => {
+    Promise.all([apiGet("/api/student/profile/public"), apiGet("/api/student/settings")])
+      .then(([profileResponse, settingsResponse]) => {
+        setProfile(profileResponse);
+        setSettings(settingsResponse);
+      })
+      .catch((error) => setToast(error.message));
+  }, []);
 
   useEffect(() => {
     let ticking = false;
@@ -147,7 +91,7 @@ function StudentPublicProfile() {
     );
     document.querySelectorAll("[data-pp-reveal]").forEach((el) => io.observe(el));
     return () => io.disconnect();
-  }, []);
+  }, [profile]);
 
   useEffect(() => {
     if (!toast) return;
@@ -155,47 +99,65 @@ function StudentPublicProfile() {
     return () => window.clearTimeout(t);
   }, [toast]);
 
+  const achievements = profile?.achievements || [];
   const filtered = useMemo(
     () => (tab === "All" ? achievements : achievements.filter((a) => a.category === tab)),
-    [tab]
+    [achievements, tab]
   );
 
   const featured = achievements.filter((a) => a.featured).slice(0, 3);
-  const score = 84;
+  const score = profile?.extracurricularScore || 0;
+  const isPublic = settings?.privacy?.publicProfile ?? profile?.publicProfile ?? true;
 
   const copyLink = async () => {
     try {
+      await apiPost("/api/student/profile/share");
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(window.location.href);
       }
       setToast("Public link copied");
-    } catch {
-      setToast("Unable to copy link");
+    } catch (error) {
+      setToast(error.message);
     }
   };
 
-  const downloadPortfolio = () => {
-    const payload = {
-      student: "Soumya Mishra",
-      department: "Computer Science",
-      year: "Final Year",
-      visibility: isPublic ? "Public" : "Private",
-      achievements
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "campusbloom-public-portfolio.json";
-    a.click();
-    URL.revokeObjectURL(url);
-    setToast("Portfolio export downloaded");
+  const downloadPortfolio = async () => {
+    try {
+      await apiPost("/api/student/profile/export");
+      downloadPortfolioPdf({
+        studentName: profile?.fullName,
+        department: profile?.department,
+        year: profile?.year,
+        visibility: isPublic ? "Public" : "Private",
+        bio: profile?.bio,
+        achievements
+      });
+      setToast("Portfolio export downloaded as PDF");
+    } catch (error) {
+      setToast(error.message);
+    }
   };
 
   const shareLinkedIn = () => {
     const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`;
     window.open(linkedInUrl, "_blank", "noopener,noreferrer");
     setToast("Opening LinkedIn share");
+  };
+
+  const toggleVisibility = async () => {
+    if (!settings) return;
+    const nextPrivacy = {
+      ...settings.privacy,
+      publicProfile: !settings.privacy.publicProfile
+    };
+    try {
+      const updatedPrivacy = await apiPut("/api/student/settings/privacy", nextPrivacy);
+      setSettings((prev) => ({ ...prev, privacy: updatedPrivacy }));
+      setProfile((prev) => (prev ? { ...prev, publicProfile: updatedPrivacy.publicProfile } : prev));
+      setToast(updatedPrivacy.publicProfile ? "Profile is now public" : "Profile is now private");
+    } catch (error) {
+      setToast(error.message);
+    }
   };
 
   return (
@@ -223,13 +185,13 @@ function StudentPublicProfile() {
           <div className="pp-container pp-hero" data-pp-reveal>
             <div className="pp-profile-main">
               <div className="pp-avatar" aria-hidden="true">
-                SM
+                {(profile?.fullName || "SM").split(" ").map((word) => word[0]).slice(0, 2).join("")}
               </div>
               <div className="pp-profile-text">
-                <h1>Soumya Mishra</h1>
-                <p className="pp-subline">Computer Science • Final Year</p>
+                <h1>{profile?.fullName || "Loading..."}</h1>
+                <p className="pp-subline">{profile?.department || ""} • {profile?.year || ""}</p>
                 <p className="pp-bio">
-                  Student builder focused on technology, leadership, and structured extracurricular growth with evidence-backed records.
+                  {profile?.bio || "Loading public profile..."}
                 </p>
               </div>
             </div>
@@ -250,11 +212,11 @@ function StudentPublicProfile() {
 
         <section className="pp-container pp-section" data-pp-reveal>
           <div className="pp-stats-grid">
-            {stats.map(([label, value], idx) => (
-              <article className="pp-stat-card" key={label} style={{ transitionDelay: `${idx * 70}ms` }}>
-                <p>{label}</p>
+            {(profile?.stats || []).map((item, idx) => (
+              <article className="pp-stat-card" key={item.key} style={{ transitionDelay: `${idx * 70}ms` }}>
+                <p>{item.label}</p>
                 <h2>
-                  <Counter value={value} />
+                  <Counter value={item.value} />
                 </h2>
               </article>
             ))}
@@ -279,7 +241,7 @@ function StudentPublicProfile() {
                       <span className="pp-pill pp-level">{item.level}</span>
                     </div>
                     <h4>{item.title}</h4>
-                    <p className="pp-date">{item.date}</p>
+                    <p className="pp-date">{new Date(item.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
                     <p className="pp-desc">{item.description}</p>
                     <button type="button" className="pp-btn pp-btn-soft">
                       View Certificate
@@ -321,7 +283,7 @@ function StudentPublicProfile() {
                         <span className="pp-pill pp-level">{item.level}</span>
                       </div>
                       <h4>{item.title}</h4>
-                      <p className="pp-date">{item.date}</p>
+                      <p className="pp-date">{new Date(item.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
                       <p className="pp-desc compact">{item.description}</p>
                       <button type="button" className="pp-link-btn">
                         View Certificate
@@ -342,13 +304,13 @@ function StudentPublicProfile() {
 
               <div className="pp-timeline">
                 <span className="pp-timeline-line" aria-hidden="true" />
-                {timeline.map(([date, title, category], idx) => (
-                  <article className="pp-timeline-item" key={`${date}-${title}`} style={{ transitionDelay: `${idx * 90}ms` }}>
-                    <span className={`pp-timeline-dot ${categoryClass[category]}`} aria-hidden="true" />
-                    <div className="pp-timeline-date">{date}</div>
+                {(profile?.timeline || []).map((item, idx) => (
+                  <article className="pp-timeline-item" key={`${item.date}-${item.title}`} style={{ transitionDelay: `${idx * 90}ms` }}>
+                    <span className={`pp-timeline-dot ${categoryClass[item.category]}`} aria-hidden="true" />
+                    <div className="pp-timeline-date">{item.date}</div>
                     <div className="pp-timeline-content">
-                      <h4>{title}</h4>
-                      <span className={`pp-pill ${categoryClass[category]}`}>{category}</span>
+                      <h4>{item.title}</h4>
+                      <span className={`pp-pill ${categoryClass[item.category]}`}>{item.category}</span>
                     </div>
                   </article>
                 ))}
@@ -385,7 +347,7 @@ function StudentPublicProfile() {
                 </div>
               </div>
               <div className="pp-badge-list">
-                {badges.map((badge) => (
+                {(profile?.badges || []).map((badge) => (
                   <div key={badge.label} className={`pp-badge-card ${badge.tone}`}>
                     <span className="pp-badge-icon" aria-hidden="true" />
                     <div>{badge.label}</div>
@@ -412,7 +374,7 @@ function StudentPublicProfile() {
                   <button
                     type="button"
                     className={`pp-switch ${isPublic ? "active" : ""}`}
-                    onClick={() => setIsPublic((prev) => !prev)}
+                    onClick={toggleVisibility}
                     aria-pressed={isPublic}
                     aria-label="Toggle public profile visibility"
                   >

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { apiPost } from "./api";
 
 const roleMeta = {
   student: {
@@ -97,6 +98,32 @@ function validateRoleForm(role, values) {
   return errors;
 }
 
+function mapRegistrationError(role, message) {
+  const normalized = String(message || "").toLowerCase();
+
+  if (normalized.includes("email already exists")) {
+    return { field: "email", message };
+  }
+
+  if (role === "student" && normalized.includes("roll number")) {
+    return { field: "rollNumber", message };
+  }
+
+  if (role === "admin" && normalized.includes("admin id")) {
+    return { field: "adminId", message };
+  }
+
+  if (normalized.includes("confirm password") || normalized.includes("do not match")) {
+    return { field: "confirmPassword", message };
+  }
+
+  if (normalized.includes("password")) {
+    return { field: "password", message };
+  }
+
+  return null;
+}
+
 function RoleIcon({ role }) {
   if (role === "student") {
     return (
@@ -184,8 +211,10 @@ function App() {
   const [scrolled, setScrolled] = useState(false);
   const [loading, setLoading] = useState(false);
   const [successRole, setSuccessRole] = useState("");
+  const [notice, setNotice] = useState(null);
   const [shakeFields, setShakeFields] = useState([]);
   const shakeTimerRef = useRef(null);
+  const redirectTimerRef = useRef(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -197,6 +226,7 @@ function App() {
   useEffect(
     () => () => {
       if (shakeTimerRef.current) window.clearTimeout(shakeTimerRef.current);
+      if (redirectTimerRef.current) window.clearTimeout(redirectTimerRef.current);
     },
     []
   );
@@ -221,6 +251,7 @@ function App() {
     const nextValues = { ...forms[role], [name]: value };
     setRoleValues(role, nextValues);
     if (successRole === role) setSuccessRole("");
+    if (notice) setNotice(null);
     if (attempted[role]) syncValidationIfNeeded(role, nextValues);
   };
 
@@ -236,6 +267,7 @@ function App() {
   const handleRoleSwitch = (nextRole) => {
     if (loading || nextRole === role) return;
     setRole(nextRole);
+    setNotice(null);
     setShakeFields([]);
   };
 
@@ -257,6 +289,7 @@ function App() {
     setTouched((prev) => ({ ...prev, [role]: allTouched }));
     setAttempted((prev) => ({ ...prev, [role]: true }));
     setErrors((prev) => ({ ...prev, [role]: nextErrors }));
+    setNotice(null);
 
     if (hasErrors) {
       triggerShake(Object.keys(nextErrors));
@@ -265,10 +298,53 @@ function App() {
 
     setLoading(true);
     setSuccessRole("");
-    window.setTimeout(() => {
-      setLoading(false);
-      setSuccessRole(role);
-    }, 1300);
+    const endpoint = role === "student" ? "/api/auth/register/student" : "/api/auth/register/admin";
+
+    apiPost(endpoint, forms[role])
+      .then(() => {
+        setLoading(false);
+        setSuccessRole(role);
+        setNotice({
+          type: "success",
+          title: "Account created successfully",
+          text:
+            role === "student"
+              ? "Redirecting to the student dashboard..."
+              : "Redirecting to the admin dashboard..."
+        });
+        const redirectTo = role === "student" ? "/student-dashboard" : "/admin-dashboard";
+        redirectTimerRef.current = window.setTimeout(() => {
+          window.location.href = redirectTo;
+        }, 700);
+      })
+      .catch((error) => {
+        setLoading(false);
+        const mapped = mapRegistrationError(role, error.message);
+        if (mapped) {
+          setErrors((prev) => ({
+            ...prev,
+            [role]: { ...prev[role], [mapped.field]: mapped.message }
+          }));
+          setTouched((prev) => ({
+            ...prev,
+            [role]: { ...prev[role], [mapped.field]: true }
+          }));
+          setNotice({
+            type: "error",
+            title: "Registration failed",
+            text: mapped.message
+          });
+          triggerShake([mapped.field]);
+          return;
+        }
+
+        setNotice({
+          type: "error",
+          title: "Registration failed",
+          text: error.message
+        });
+        triggerShake(["password", "confirmPassword"]);
+      });
   };
 
   const handleBackToHome = (event) => {
@@ -403,9 +479,21 @@ function App() {
                   <p className="mt-1 text-sm text-slate-700">{roleMeta[role].subtitle}</p>
                 </div>
 
-                {successRole === role && (
-                  <div className="success-pop mb-5 flex items-start gap-3 rounded-2xl border border-accent/25 bg-accent/10 px-4 py-3 text-sm text-slate-700">
-                    <span className="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-accent text-white shadow-[0_6px_18px_rgba(16,185,129,0.28)]">
+                {notice && (
+                  <div
+                    className={`mb-5 flex items-start gap-3 rounded-2xl px-4 py-3 text-sm text-slate-700 ${
+                      notice.type === "success"
+                        ? "success-pop border border-accent/25 bg-accent/10"
+                        : "border border-rose-200 bg-rose-50"
+                    }`}
+                  >
+                    <span
+                      className={`mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-white ${
+                        notice.type === "success"
+                          ? "bg-accent shadow-[0_6px_18px_rgba(16,185,129,0.28)]"
+                          : "bg-rose-500 shadow-[0_6px_18px_rgba(244,63,94,0.2)]"
+                      }`}
+                    >
                       <svg
                         viewBox="0 0 24 24"
                         className="h-3.5 w-3.5"
@@ -416,14 +504,12 @@ function App() {
                         strokeLinejoin="round"
                         aria-hidden="true"
                       >
-                        <path d="m5 12 4 4L19 6" />
+                        {notice.type === "success" ? <path d="m5 12 4 4L19 6" /> : <path d="M12 8v5m0 3h.01" />}
                       </svg>
                     </span>
                     <div>
-                      <p className="font-semibold text-slate-900">Account created successfully</p>
-                      <p className="text-xs text-slate-600">
-                        Your {roleMeta[role].label.toLowerCase()} registration is ready for the next verification step.
-                      </p>
+                      <p className="font-semibold text-slate-900">{notice.title}</p>
+                      <p className="text-xs text-slate-600">{notice.text}</p>
                     </div>
                   </div>
                 )}

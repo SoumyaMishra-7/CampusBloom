@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { apiGet, apiPost } from "./api";
 
 const navItems = [
   { label: "Dashboard", view: "dashboard", href: "/student-dashboard" },
@@ -7,98 +8,6 @@ const navItems = [
   { label: "Certificates", view: "certificates", href: "/student-certificates" },
   { label: "Public Profile", view: "public-profile", href: "/student-public-profile" },
   { label: "Settings", view: "settings", href: "/student-settings" }
-];
-
-const stats = [
-  { key: "total", label: "Total Achievements", value: 148, icon: "trophy" },
-  { key: "awards", label: "Awards Won", value: 32, icon: "medal" },
-  { key: "certs", label: "Certificates Uploaded", value: 64, icon: "certificate" },
-  { key: "events", label: "Participation Events", value: 96, icon: "target" }
-];
-
-const achievementData = [
-  {
-    title: "Smart Campus IoT Hackathon Winner",
-    category: "Technical",
-    level: "National",
-    date: "Feb 12, 2026",
-    status: "Approved",
-    skills: ["IoT", "Python", "Team Leadership"]
-  },
-  {
-    title: "Intercollege Basketball Tournament",
-    category: "Sports",
-    level: "College",
-    date: "Jan 28, 2026",
-    status: "Approved",
-    skills: ["Teamwork", "Discipline", "Strategy"]
-  },
-  {
-    title: "Classical Fusion Performance",
-    category: "Cultural",
-    level: "State",
-    date: "Jan 15, 2026",
-    status: "Pending",
-    skills: ["Stage Performance", "Coordination", "Creativity"]
-  },
-  {
-    title: "Student Council Event Lead",
-    category: "Leadership",
-    level: "College",
-    date: "Dec 20, 2025",
-    status: "Approved",
-    skills: ["Event Planning", "Communication", "Execution"]
-  },
-  {
-    title: "Open Source Contribution Sprint",
-    category: "Technical",
-    level: "State",
-    date: "Dec 05, 2025",
-    status: "Approved",
-    skills: ["Git", "React", "Problem Solving"]
-  },
-  {
-    title: "Track & Field 400m Finals",
-    category: "Sports",
-    level: "State",
-    date: "Nov 19, 2025",
-    status: "Pending",
-    skills: ["Athletics", "Consistency", "Time Management"]
-  }
-];
-
-const timelineItems = [
-  {
-    date: "Feb 2026",
-    title: "National Hackathon Winner",
-    note: "Approved by Innovation Cell",
-    category: "Technical"
-  },
-  {
-    date: "Jan 2026",
-    title: "Intercollege Basketball Tournament",
-    note: "Certificate verified and portfolio published",
-    category: "Sports"
-  },
-  {
-    date: "Jan 2026",
-    title: "State Cultural Performance Submission",
-    note: "Awaiting faculty coordinator approval",
-    category: "Cultural"
-  },
-  {
-    date: "Dec 2025",
-    title: "Student Council Event Leadership",
-    note: "Added impact metrics and event photos",
-    category: "Leadership"
-  }
-];
-
-const quickActions = [
-  ["Upload Certificate", "upload"],
-  ["Generate Portfolio PDF", "download"],
-  ["Share Public Profile", "share"],
-  ["Edit Profile", "edit"]
 ];
 
 const categoryColorClass = {
@@ -168,130 +77,53 @@ function Icon({ type }) {
 
   switch (type) {
     case "trophy":
-      return (
-        <svg {...props}>
-          <path d="M8 21h8" />
-          <path d="M12 17v4" />
-          <path d="M7 4h10v5a5 5 0 0 1-10 0V4z" />
-          <path d="M17 6h3a2 2 0 0 1-2 2h-1" />
-          <path d="M7 6H4a2 2 0 0 0 2 2h1" />
-        </svg>
-      );
+      return <svg {...props}><path d="M8 21h8" /><path d="M12 17v4" /><path d="M7 4h10v5a5 5 0 0 1-10 0V4z" /><path d="M17 6h3a2 2 0 0 1-2 2h-1" /><path d="M7 6H4a2 2 0 0 0 2 2h1" /></svg>;
     case "medal":
-      return (
-        <svg {...props}>
-          <path d="m8 3 4 5 4-5" />
-          <circle cx="12" cy="15" r="5" />
-          <path d="m10.7 15 1 1 1.6-2" />
-        </svg>
-      );
+      return <svg {...props}><path d="m8 3 4 5 4-5" /><circle cx="12" cy="15" r="5" /><path d="m10.7 15 1 1 1.6-2" /></svg>;
     case "certificate":
-      return (
-        <svg {...props}>
-          <path d="M7 3h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
-          <path d="M8 7h8M8 10h5" />
-          <path d="m10 15 2 2 2-2v6l-2-1-2 1v-6z" />
-        </svg>
-      );
+      return <svg {...props}><path d="M7 3h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" /><path d="M8 7h8M8 10h5" /><path d="m10 15 2 2 2-2v6l-2-1-2 1v-6z" /></svg>;
     case "target":
-      return (
-        <svg {...props}>
-          <circle cx="12" cy="12" r="8" />
-          <circle cx="12" cy="12" r="4" />
-          <circle cx="12" cy="12" r="1" />
-        </svg>
-      );
+      return <svg {...props}><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="1" /></svg>;
     case "search":
-      return (
-        <svg {...props}>
-          <circle cx="11" cy="11" r="7" />
-          <path d="m20 20-3.5-3.5" />
-        </svg>
-      );
+      return <svg {...props}><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>;
     case "bell":
-      return (
-        <svg {...props}>
-          <path d="M15 17H9" />
-          <path d="M18 17H6c1.3-1.2 2-3 2-4.8V10a4 4 0 1 1 8 0v2.2c0 1.8.7 3.6 2 4.8Z" />
-          <path d="M10.5 20a1.5 1.5 0 0 0 3 0" />
-        </svg>
-      );
+      return <svg {...props}><path d="M15 17H9" /><path d="M18 17H6c1.3-1.2 2-3 2-4.8V10a4 4 0 1 1 8 0v2.2c0 1.8.7 3.6 2 4.8Z" /><path d="M10.5 20a1.5 1.5 0 0 0 3 0" /></svg>;
     case "menu":
-      return (
-        <svg {...props}>
-          <path d="M4 7h16M4 12h16M4 17h16" />
-        </svg>
-      );
+      return <svg {...props}><path d="M4 7h16M4 12h16M4 17h16" /></svg>;
     case "moon":
-      return (
-        <svg {...props}>
-          <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z" />
-        </svg>
-      );
+      return <svg {...props}><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z" /></svg>;
     case "sun":
-      return (
-        <svg {...props}>
-          <circle cx="12" cy="12" r="4" />
-          <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-        </svg>
-      );
+      return <svg {...props}><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>;
     case "upload":
-      return (
-        <svg {...props}>
-          <path d="M12 16V6" />
-          <path d="m8.5 9.5 3.5-3.5 3.5 3.5" />
-          <path d="M20 17v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2" />
-        </svg>
-      );
+      return <svg {...props}><path d="M12 16V6" /><path d="m8.5 9.5 3.5-3.5 3.5 3.5" /><path d="M20 17v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2" /></svg>;
     case "download":
-      return (
-        <svg {...props}>
-          <path d="M12 4v10" />
-          <path d="m8.5 10.5 3.5 3.5 3.5-3.5" />
-          <path d="M20 17v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2" />
-        </svg>
-      );
+      return <svg {...props}><path d="M12 4v10" /><path d="m8.5 10.5 3.5 3.5 3.5-3.5" /><path d="M20 17v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2" /></svg>;
     case "share":
-      return (
-        <svg {...props}>
-          <circle cx="18" cy="5" r="2" />
-          <circle cx="6" cy="12" r="2" />
-          <circle cx="18" cy="19" r="2" />
-          <path d="m7.8 11 8.4-4.7M7.8 13l8.4 4.7" />
-        </svg>
-      );
+      return <svg {...props}><circle cx="18" cy="5" r="2" /><circle cx="6" cy="12" r="2" /><circle cx="18" cy="19" r="2" /><path d="m7.8 11 8.4-4.7M7.8 13l8.4 4.7" /></svg>;
     case "edit":
-      return (
-        <svg {...props}>
-          <path d="M12 20h9" />
-          <path d="m16.5 3.5 4 4L8 20H4v-4L16.5 3.5z" />
-        </svg>
-      );
+      return <svg {...props}><path d="M12 20h9" /><path d="m16.5 3.5 4 4L8 20H4v-4L16.5 3.5z" /></svg>;
     case "star":
-      return (
-        <svg {...props}>
-          <path d="m12 3 2.6 5.2 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.6 9l5.8-.8L12 3z" />
-        </svg>
-      );
+      return <svg {...props}><path d="m12 3 2.6 5.2 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.6 9l5.8-.8L12 3z" /></svg>;
     case "close":
-      return (
-        <svg {...props}>
-          <path d="M18 6 6 18M6 6l12 12" />
-        </svg>
-      );
+      return <svg {...props}><path d="M18 6 6 18M6 6l12 12" /></svg>;
     case "check":
-      return (
-        <svg {...props}>
-          <path d="m5 12 4 4 10-10" />
-        </svg>
-      );
+      return <svg {...props}><path d="m5 12 4 4 10-10" /></svg>;
     default:
-      return (
-        <svg {...props}>
-          <circle cx="12" cy="12" r="8" />
-        </svg>
-      );
+      return <svg {...props}><circle cx="12" cy="12" r="8" /></svg>;
   }
+}
+
+function getInitials(name) {
+  return (name || "SM")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
+function formatDisplayDate(date) {
+  return new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 function StudentDashboard({ initialView = "dashboard" }) {
@@ -306,6 +138,7 @@ function StudentDashboard({ initialView = "dashboard" }) {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem(storageKeys.darkMode) === "true");
   const [loading, setLoading] = useState(true);
+  const [dashboard, setDashboard] = useState(null);
   const [favoriteTitles, setFavoriteTitles] = useState(() => {
     try {
       const raw = localStorage.getItem(storageKeys.favorites);
@@ -321,8 +154,22 @@ function StudentDashboard({ initialView = "dashboard" }) {
   const timelineSectionRef = useRef(null);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setLoading(false), 950);
-    return () => window.clearTimeout(timer);
+    let mounted = true;
+    apiGet("/api/student/dashboard")
+      .then((data) => {
+        if (!mounted) return;
+        setDashboard(data);
+      })
+      .catch((error) => {
+        if (!mounted) return;
+        setToast(error.message);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -357,16 +204,13 @@ function StudentDashboard({ initialView = "dashboard" }) {
 
   useEffect(() => {
     if (loading) return;
-
     const viewRef =
       initialView === "achievements"
         ? achievementsSectionRef
         : initialView === "timeline"
           ? timelineSectionRef
           : null;
-
     if (!viewRef?.current) return;
-
     window.requestAnimationFrame(() => {
       viewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
@@ -386,10 +230,22 @@ function StudentDashboard({ initialView = "dashboard" }) {
 
     document.querySelectorAll("[data-reveal]").forEach((node) => io.observe(node));
     return () => io.disconnect();
-  }, [loading]);
+  }, [loading, dashboard]);
+
+  const achievements = dashboard?.achievements || [];
+  const stats = dashboard?.stats || [];
+  const timelineItems = dashboard?.timeline || [];
+  const notifications = dashboard?.notifications || [];
+  const quickActions = dashboard?.quickActions || [];
+  const categoryCounts = dashboard?.categoryCounts || { Technical: 0, Sports: 0, Cultural: 0, Leadership: 0 };
+  const spotlightSkills = dashboard?.spotlightSkills || [];
+  const extracurricularScore = dashboard?.extracurricularScore || 0;
+  const portfolioCompletion = dashboard?.portfolioCompletion || 0;
+  const studentName = dashboard?.studentName || "Student";
+  const favoriteCount = favoriteTitles.length;
 
   const filteredAchievements = useMemo(() => {
-    const filtered = achievementData.filter((item) => {
+    const filtered = achievements.filter((item) => {
       const categoryOk = filter === "All" || item.category === filter;
       const searchOk =
         !search.trim() ||
@@ -408,56 +264,41 @@ function StudentDashboard({ initialView = "dashboard" }) {
         : new Date(b.date).getTime() - new Date(a.date).getTime();
     });
     return sorted;
-  }, [favoriteTitles, favoritesOnly, filter, search, sortBy]);
-
-  const categoryCounts = useMemo(() => {
-    const base = { Technical: 0, Sports: 0, Cultural: 0, Leadership: 0 };
-    achievementData.forEach((item) => {
-      base[item.category] += 1;
-    });
-    return base;
-  }, []);
+  }, [achievements, favoriteTitles, favoritesOnly, filter, search, sortBy]);
 
   const maxCategory = Math.max(...Object.values(categoryCounts), 1);
-  const extracurricularScore = 84;
-  const favoriteCount = favoriteTitles.length;
 
   const toggleFavorite = (title) => {
     setFavoriteTitles((prev) => (prev.includes(title) ? prev.filter((item) => item !== title) : [...prev, title]));
   };
 
-  const handleQuickAction = (label) => {
-    if (label === "Generate Portfolio PDF") {
-      const payload = {
-        generatedAt: new Date().toISOString(),
-        student: "Soumya",
-        achievements: filteredAchievements.map((item) => ({
-          title: item.title,
-          category: item.category,
-          level: item.level,
-          status: item.status
-        }))
-      };
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "campusbloom-portfolio-export.json";
-      a.click();
-      URL.revokeObjectURL(url);
-      setToast("Portfolio export generated");
-      return;
-    }
-
-    if (label === "Share Public Profile") {
-      if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(`${window.location.origin}/student-profile/soumya`).catch(() => {});
+  const handleQuickAction = async (label) => {
+    try {
+      if (label === "Upload Certificate") {
+        window.location.href = "/student-certificates";
+        return;
       }
-      setToast("Public profile link copied");
-      return;
+      if (label === "Edit Profile") {
+        window.location.href = "/student-settings";
+        return;
+      }
+      if (label === "Generate Portfolio PDF") {
+        const response = await apiPost("/api/student/profile/export");
+        setToast(response.message);
+        return;
+      }
+      if (label === "Share Public Profile") {
+        const response = await apiPost("/api/student/profile/share");
+        if (navigator.clipboard?.writeText) {
+          navigator.clipboard.writeText(`${window.location.origin}/student-public-profile`).catch(() => {});
+        }
+        setToast(response.message);
+        return;
+      }
+      setToast(`${label} opened`);
+    } catch (error) {
+      setToast(error.message);
     }
-
-    setToast(`${label} opened`);
   };
 
   return (
@@ -482,42 +323,26 @@ function StudentDashboard({ initialView = "dashboard" }) {
         </div>
 
         <nav className="sd-nav" aria-label="Sidebar navigation">
-          {navItems.map((item) =>
-            item.href ? (
-              <a
-                key={item.label}
-                href={item.href}
-                className={`sd-nav-item ${activeNav === item.label ? "active" : ""}`}
-                onClick={() => setActiveNav(item.label)}
-                title={item.label}
-              >
-                <span className="sd-nav-dot" />
-                <span className="sd-nav-label">{item.label}</span>
-              </a>
-            ) : (
-              <button
-                key={item.label}
-                type="button"
-                className={`sd-nav-item ${activeNav === item.label ? "active" : ""}`}
-                onClick={() => {
-                  setActiveNav(item.label);
-                  setToast(`${item.label} page not created yet`);
-                }}
-                title={item.label}
-              >
-                <span className="sd-nav-dot" />
-                <span className="sd-nav-label">{item.label}</span>
-              </button>
-            )
-          )}
+          {navItems.map((item) => (
+            <a
+              key={item.label}
+              href={item.href}
+              className={`sd-nav-item ${activeNav === item.label ? "active" : ""}`}
+              onClick={() => setActiveNav(item.label)}
+              title={item.label}
+            >
+              <span className="sd-nav-dot" />
+              <span className="sd-nav-label">{item.label}</span>
+            </a>
+          ))}
         </nav>
 
         <div className="sd-sidebar-card">
           <p>Portfolio Completion</p>
           <div className="sd-mini-progress">
-            <span style={{ width: "78%" }} />
+            <span style={{ width: `${portfolioCompletion}%` }} />
           </div>
-          <small>78% profile strength</small>
+          <small>{portfolioCompletion}% profile strength</small>
         </div>
       </aside>
 
@@ -553,41 +378,29 @@ function StudentDashboard({ initialView = "dashboard" }) {
               onClick={() => setShowNotifications((prev) => !prev)}
             >
               <Icon type="bell" />
-              <span className="notify-badge">3</span>
+              <span className="notify-badge">{notifications.length}</span>
             </button>
 
             <button type="button" className="profile-chip" aria-label="Student profile menu">
               <span className="profile-meta">
-                <strong>Soumya</strong>
+                <strong>{studentName.split(" ")[0] || "Student"}</strong>
                 <small>Student</small>
               </span>
-              <span className="avatar">SM</span>
+              <span className="avatar">{getInitials(studentName)}</span>
             </button>
           </div>
 
           {showNotifications ? (
             <div className="notifications-popover" role="dialog" aria-label="Recent notifications">
-              <div className="notification-item">
-                <span className="notification-icon"><Icon type="check" /></span>
-                <div>
-                  <strong>Hackathon achievement approved</strong>
-                  <p>Innovation Cell verified your national-level entry.</p>
+              {notifications.map((item) => (
+                <div className="notification-item" key={item.id}>
+                  <span className="notification-icon"><Icon type={item.icon} /></span>
+                  <div>
+                    <strong>{item.title}</strong>
+                    <p>{item.description}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="notification-item">
-                <span className="notification-icon"><Icon type="upload" /></span>
-                <div>
-                  <strong>Certificate upload reminder</strong>
-                  <p>Add proof for your cultural performance to complete review.</p>
-                </div>
-              </div>
-              <div className="notification-item">
-                <span className="notification-icon"><Icon type="share" /></span>
-                <div>
-                  <strong>Profile viewed by placement cell</strong>
-                  <p>Your public profile was accessed today.</p>
-                </div>
-              </div>
+              ))}
             </div>
           ) : null}
         </header>
@@ -609,8 +422,8 @@ function StudentDashboard({ initialView = "dashboard" }) {
 
             <section className="stats-grid" data-reveal>
               {loading
-                ? stats.map((item) => (
-                    <article className="metric-card skeleton-card" key={item.key} aria-hidden="true">
+                ? Array.from({ length: 4 }).map((_, idx) => (
+                    <article className="metric-card skeleton-card" key={idx} aria-hidden="true">
                       <div className="skeleton skeleton-icon" />
                       <div className="skeleton skeleton-line short" />
                       <div className="skeleton skeleton-line" />
@@ -720,7 +533,7 @@ function StudentDashboard({ initialView = "dashboard" }) {
                           </article>
                         ))
                       : filteredAchievements.map((item, idx) => (
-                          <article className="achievement-card" key={`${item.title}-${idx}`} style={{ transitionDelay: `${idx * 60}ms` }}>
+                          <article className="achievement-card" key={item.id || `${item.title}-${idx}`} style={{ transitionDelay: `${idx * 60}ms` }}>
                             <div className="achievement-top">
                               <span className={`category-pill ${categoryColorClass[item.category]}`}>{item.category}</span>
                               <div className="achievement-actions-inline">
@@ -742,7 +555,7 @@ function StudentDashboard({ initialView = "dashboard" }) {
 
                             <div className="achievement-meta">
                               <span className="meta-chip">{item.level}</span>
-                              <span className="meta-chip">{item.date}</span>
+                              <span className="meta-chip">{formatDisplayDate(item.date)}</span>
                             </div>
 
                             <div className="skill-tags">
@@ -798,18 +611,18 @@ function StudentDashboard({ initialView = "dashboard" }) {
                   </div>
 
                   <div className="quick-actions-list">
-                    {quickActions.map(([label, icon], idx) => (
+                    {quickActions.map((item, idx) => (
                       <button
-                        key={label}
+                        key={item.label}
                         type="button"
                         className="quick-btn"
                         style={{ transitionDelay: `${idx * 60}ms` }}
-                        onClick={() => handleQuickAction(label)}
+                        onClick={() => handleQuickAction(item.label)}
                       >
                         <span className="quick-icon">
-                          <Icon type={icon} />
+                          <Icon type={item.action} />
                         </span>
-                        <span>{label}</span>
+                        <span>{item.label}</span>
                       </button>
                     ))}
                   </div>
@@ -824,18 +637,7 @@ function StudentDashboard({ initialView = "dashboard" }) {
                   </div>
 
                   <div className="skill-cloud">
-                    {[
-                      "Leadership",
-                      "Problem Solving",
-                      "Teamwork",
-                      "Communication",
-                      "Execution",
-                      "Creativity",
-                      "Discipline",
-                      "React",
-                      "IoT",
-                      "Event Planning"
-                    ].map((skill, idx) => (
+                    {spotlightSkills.map((skill, idx) => (
                       <span key={skill} style={{ transitionDelay: `${idx * 50}ms` }}>
                         {skill}
                       </span>
@@ -855,7 +657,7 @@ function StudentDashboard({ initialView = "dashboard" }) {
               <div>
                 <h3>{selectedAchievement.title}</h3>
                 <p>
-                  {selectedAchievement.category} | {selectedAchievement.level} | {selectedAchievement.date}
+                  {selectedAchievement.category} | {selectedAchievement.level} | {formatDisplayDate(selectedAchievement.date)}
                 </p>
               </div>
               <button type="button" className="icon-btn modal-close" onClick={() => setSelectedAchievement(null)} aria-label="Close preview">

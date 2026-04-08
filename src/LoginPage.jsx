@@ -1,15 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import { apiGet, apiPost } from "./api";
 
 const roleMeta = {
   student: {
     label: "Student",
     subtitle: "Login to manage and showcase your verified achievements",
-    identifierLabel: "Roll Number",
-    identifierPlaceholder: "e.g. CB-STU-001",
-    identifierKey: "rollNumber",
     demo: {
       email: "student@demo.campusbloom.com",
-      identifier: "CB-STU-001",
       password: "student123",
       redirectTo: "/student-dashboard"
     }
@@ -17,12 +14,8 @@ const roleMeta = {
   admin: {
     label: "Admin",
     subtitle: "Login to review submissions and manage institutional records",
-    identifierLabel: "Admin ID",
-    identifierPlaceholder: "e.g. CB-ADM-001",
-    identifierKey: "adminId",
     demo: {
       email: "admin@demo.campusbloom.com",
-      identifier: "CB-ADM-001",
       password: "admin123",
       redirectTo: "/admin-dashboard"
     }
@@ -30,8 +23,8 @@ const roleMeta = {
 };
 
 const initialForms = {
-  student: { email: "", rollNumber: "", password: "" },
-  admin: { email: "", adminId: "", password: "" }
+  student: { email: "", password: "", captchaAnswer: "" },
+  admin: { email: "", password: "", captchaAnswer: "" }
 };
 
 const initialVisibility = {
@@ -122,14 +115,12 @@ function RoleIcon({ role }) {
 
 function validateLogin(role, values) {
   const errors = {};
-  const meta = roleMeta[role];
-  const identifierValue = values[meta.identifierKey];
 
   if (!values.email.trim()) errors.email = "Email is required.";
   else if (!validateEmail(values.email)) errors.email = "Enter a valid email address.";
 
-  if (!String(identifierValue || "").trim()) {
-    errors[meta.identifierKey] = `${meta.identifierLabel} is required.`;
+  if (!String(values.captchaAnswer || "").trim()) {
+    errors.captchaAnswer = "Captcha answer is required.";
   }
 
   if (!values.password) errors.password = "Password is required.";
@@ -145,9 +136,14 @@ function LoginPage() {
   const [attempted, setAttempted] = useState({ student: false, admin: false });
   const [visibility, setVisibility] = useState(initialVisibility);
   const [loading, setLoading] = useState(false);
+  const [captchaLoading, setCaptchaLoading] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [notice, setNotice] = useState(null);
   const [shakeFields, setShakeFields] = useState([]);
+  const [captchas, setCaptchas] = useState({
+    student: { captchaId: "", prompt: "", expiresAt: "" },
+    admin: { captchaId: "", prompt: "", expiresAt: "" }
+  });
   const shakeTimerRef = useRef(null);
   const submitTimerRef = useRef(null);
 
@@ -166,10 +162,16 @@ function LoginPage() {
     []
   );
 
+  useEffect(() => {
+    loadCaptcha("student");
+    loadCaptcha("admin");
+  }, []);
+
   const currentValues = forms[role];
   const currentErrors = errors[role] || {};
   const currentTouched = touched[role] || {};
   const meta = roleMeta[role];
+  const currentCaptcha = captchas[role];
 
   const showFieldError = (name) => Boolean(currentErrors[name] && (currentTouched[name] || attempted[role]));
 
@@ -212,8 +214,8 @@ function LoginPage() {
     const nextValues = {
       ...initialForms[nextRole],
       email: nextMeta.demo.email,
-      [nextMeta.identifierKey]: nextMeta.demo.identifier,
-      password: nextMeta.demo.password
+      password: nextMeta.demo.password,
+      captchaAnswer: ""
     };
 
     if (nextRole !== role) setRole(nextRole);
@@ -226,10 +228,39 @@ function LoginPage() {
 
   const handleSubmit = (event) => {
     event.preventDefault();
+  };
+
+  const loadCaptcha = async (targetRole = role) => {
+    setCaptchaLoading(true);
+    try {
+      const challenge = await apiGet("/api/auth/captcha");
+      setCaptchas((prev) => ({ ...prev, [targetRole]: challenge }));
+      setForms((prev) => ({
+        ...prev,
+        [targetRole]: { ...prev[targetRole], captchaAnswer: "" }
+      }));
+      setErrors((prev) => ({
+        ...prev,
+        [targetRole]: { ...prev[targetRole], captchaAnswer: undefined }
+      }));
+    } catch (error) {
+      if (targetRole === role) {
+        setNotice({
+          type: "error",
+          title: "Captcha unavailable",
+          text: error.message
+        });
+      }
+    } finally {
+      setCaptchaLoading(false);
+    }
+  };
+
+  const submitLogin = async () => {
     if (loading) return;
 
     const nextErrors = validateLogin(role, forms[role]);
-    const keysToTouch = ["email", meta.identifierKey, "password"];
+    const keysToTouch = ["email", "captchaAnswer", "password"];
     const allTouched = keysToTouch.reduce((acc, key) => ({ ...acc, [key]: true }), {});
     const hasErrors = Object.keys(nextErrors).length > 0;
 
@@ -243,21 +274,13 @@ function LoginPage() {
       return;
     }
 
-    const demo = meta.demo;
-    const normalizedEmail = forms[role].email.trim().toLowerCase();
-    const normalizedIdentifier = String(forms[role][meta.identifierKey] || "").trim();
-
-    if (
-      normalizedEmail !== demo.email.toLowerCase() ||
-      normalizedIdentifier !== demo.identifier ||
-      forms[role].password !== demo.password
-    ) {
+    if (!currentCaptcha.captchaId) {
       setNotice({
         type: "error",
-        title: "Invalid demo credentials",
-        text: `Use the ${meta.label.toLowerCase()} demo credentials shown on the right or tap "Use ${meta.label} Demo".`
+        title: "Captcha required",
+        text: "Refresh the captcha and try again."
       });
-      triggerShake(["email", meta.identifierKey, "password"]);
+      triggerShake(["captchaAnswer"]);
       return;
     }
 
@@ -268,9 +291,33 @@ function LoginPage() {
       text: "Redirecting to the dashboard..."
     });
 
-    submitTimerRef.current = window.setTimeout(() => {
-      window.location.href = demo.redirectTo;
-    }, 700);
+    try {
+      const response = await apiPost("/api/auth/login", {
+        role,
+        email: forms[role].email.trim(),
+        identifier: "",
+        captchaId: currentCaptcha.captchaId,
+        captchaAnswer: forms[role].captchaAnswer.trim(),
+        password: forms[role].password
+      });
+
+      submitTimerRef.current = window.setTimeout(() => {
+        window.location.href = response.redirectTo;
+      }, 700);
+    } catch (error) {
+      setLoading(false);
+      setNotice({
+        type: "error",
+        title: "Login failed",
+        text: error.message
+      });
+      if (String(error.message || "").toLowerCase().includes("captcha")) {
+        await loadCaptcha(role);
+        triggerShake(["captchaAnswer"]);
+        return;
+      }
+      triggerShake(["email", "password"]);
+    }
   };
 
   const handleBackToHome = (event) => {
@@ -293,13 +340,6 @@ function LoginPage() {
 
   const fields = [
     { name: "email", label: "Email", type: "email", autoComplete: "email" },
-    {
-      name: meta.identifierKey,
-      label: meta.identifierLabel,
-      type: "text",
-      autoComplete: "off",
-      placeholder: meta.identifierPlaceholder
-    },
     { name: "password", label: "Password", type: "password", autoComplete: "current-password" }
   ];
 
@@ -372,7 +412,7 @@ function LoginPage() {
                     Welcome back to CampusBloom
                   </h1>
                   <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
-                    Clean, role-based login for students and admins using separate demo accounts for quick access.
+                    Clean, role-based login for students and admins using email and password for quick access.
                   </p>
                 </div>
 
@@ -448,7 +488,14 @@ function LoginPage() {
                 )}
 
                 <div key={role} className="role-form-enter">
-                  <form onSubmit={handleSubmit} noValidate className="space-y-3.5">
+                  <form
+                    onSubmit={(event) => {
+                      handleSubmit(event);
+                      submitLogin();
+                    }}
+                    noValidate
+                    className="space-y-3.5"
+                  >
                     {fields.map((field, index) => {
                       const hasError = showFieldError(field.name);
                       const hasValue = String(currentValues[field.name] || "").trim().length > 0;
@@ -512,9 +559,57 @@ function LoginPage() {
                       );
                     })}
 
+                    <div className={`field-reveal ${shakeFields.includes("captchaAnswer") ? "error-shake" : ""}`} style={{ animationDelay: `${fields.length * 55}ms` }}>
+                      <div className="rounded-2xl border border-slate-200/80 bg-white/85 p-4 shadow-[0_10px_30px_rgba(15,23,42,0.04)]">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary">
+                              Security Check
+                            </p>
+                            <p className="mt-1 text-sm font-medium text-slate-800">
+                              {currentCaptcha.prompt || "Loading captcha..."}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => loadCaptcha(role)}
+                            disabled={loading || captchaLoading}
+                            className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-600 transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-70"
+                          >
+                            {captchaLoading ? "Refreshing..." : "Refresh"}
+                          </button>
+                        </div>
+
+                        <div className="mt-3">
+                          <input
+                            id={`${role}-captchaAnswer`}
+                            type="text"
+                            value={currentValues.captchaAnswer}
+                            onChange={(e) => handleFieldChange("captchaAnswer", e.target.value)}
+                            onBlur={() => handleBlur("captchaAnswer")}
+                            autoComplete="off"
+                            placeholder="Enter captcha answer"
+                            disabled={loading || captchaLoading}
+                            className={`h-12 w-full rounded-xl border bg-white px-4 text-sm text-ink outline-none transition-all duration-300 ease-premium ${
+                              showFieldError("captchaAnswer")
+                                ? "border-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
+                                : "border-slate-200 focus:border-primary focus:ring-4 focus:ring-primary/10"
+                            }`}
+                          />
+                          <div className="mt-1.5 min-h-[18px] px-1 text-xs">
+                            {showFieldError("captchaAnswer") ? (
+                              <p className="text-rose-600">{currentErrors.captchaAnswer}</p>
+                            ) : (
+                              <p className="text-slate-500">Required for both student and admin login.</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
                     <button
                       type="submit"
-                      disabled={loading}
+                      disabled={loading || captchaLoading}
                       className="mt-2 inline-flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-white shadow-[0_14px_30px_rgba(79,70,229,0.26)] transition-all duration-300 ease-premium hover:-translate-y-0.5 hover:shadow-glow active:translate-y-0 active:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-80 disabled:hover:translate-y-0"
                     >
                       {loading ? (
@@ -587,9 +682,6 @@ function LoginPage() {
                             </button>
                           </div>
                           <p className="text-xs leading-5 text-slate-300">Email: {demoMeta.demo.email}</p>
-                          <p className="text-xs leading-5 text-slate-300">
-                            {demoMeta.identifierLabel}: {demoMeta.demo.identifier}
-                          </p>
                           <p className="text-xs leading-5 text-slate-300">Password: {demoMeta.demo.password}</p>
                         </div>
                       );

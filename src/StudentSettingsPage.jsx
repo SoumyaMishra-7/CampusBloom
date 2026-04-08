@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { apiGet, apiPost, apiPut } from "./api";
 
 const tabs = ["Profile", "Privacy", "Notifications", "Account", "Appearance"];
 
@@ -63,27 +64,24 @@ function StudentSettingsPage() {
   const [toast, setToast] = useState("");
 
   const [profile, setProfile] = useState({
-    fullName: "Soumya Mishra",
-    email: "soumya@example.edu",
-    department: "Computer Science",
-    year: "Final Year",
-    bio: "Student builder focused on technology, leadership, and evidence-backed extracurricular growth.",
+    fullName: "",
+    email: "",
+    department: "",
+    year: "",
+    bio: "",
     photoName: ""
   });
-
   const [privacy, setPrivacy] = useState({
     publicProfile: true,
     showEmail: false,
     showRollNumber: false,
     achievementVisibility: true
   });
-
   const [notifications, setNotifications] = useState({
     achievementAdded: true,
     approvalUpdate: true,
     weeklySummary: false
   });
-
   const [account, setAccount] = useState({
     currentPassword: "",
     newPassword: "",
@@ -93,14 +91,22 @@ function StudentSettingsPage() {
   const [accountErrors, setAccountErrors] = useState({});
   const [shakeAccount, setShakeAccount] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-
   const [appearance, setAppearance] = useState({
-    themeMode: "system"
+    themeMode: "system",
+    previewDarkMode: false
   });
 
   useEffect(() => {
-    const t = window.setTimeout(() => setLoadingProfile(false), 850);
-    return () => window.clearTimeout(t);
+    apiGet("/api/student/settings")
+      .then((data) => {
+        setProfile(data.profile);
+        setPrivacy(data.privacy);
+        setNotifications(data.notifications);
+        setAppearance(data.appearance);
+        setPageThemeDark(data.appearance.previewDarkMode);
+      })
+      .catch((error) => setToast(error.message))
+      .finally(() => setLoadingProfile(false));
   }, []);
 
   useEffect(() => {
@@ -138,15 +144,11 @@ function StudentSettingsPage() {
 
   const autoSaveLabel = useMemo(() => (saving ? "Saving..." : savedPulse ? "All changes saved" : "Autosave enabled"), [saving, savedPulse]);
 
-  const triggerSave = (message = "Settings saved") => {
-    setSaving(true);
-    setSavedPulse(false);
-    window.setTimeout(() => {
-      setSaving(false);
-      setSavedPulse(true);
-      setToast(message);
-      window.setTimeout(() => setSavedPulse(false), 900);
-    }, 850);
+  const triggerSaved = (message) => {
+    setSaving(false);
+    setSavedPulse(true);
+    setToast(message);
+    window.setTimeout(() => setSavedPulse(false), 900);
   };
 
   const validateAccount = () => {
@@ -159,7 +161,7 @@ function StudentSettingsPage() {
     return errs;
   };
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     const errs = validateAccount();
     setAccountErrors(errs);
     if (Object.keys(errs).length) {
@@ -167,8 +169,76 @@ function StudentSettingsPage() {
       window.setTimeout(() => setShakeAccount(false), 420);
       return;
     }
-    triggerSave("Password updated successfully");
-    setAccount({ currentPassword: "", newPassword: "", confirmPassword: "" });
+
+    try {
+      setSaving(true);
+      const response = await apiPost("/api/student/account/change-password", account);
+      setAccount({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      triggerSaved(response.message);
+    } catch (error) {
+      setSaving(false);
+      setToast(error.message);
+    }
+  };
+
+  const saveProfile = async () => {
+    try {
+      setSaving(true);
+      const updated = await apiPut("/api/student/settings/profile", profile);
+      setProfile(updated);
+      triggerSaved("Profile changes saved");
+    } catch (error) {
+      setSaving(false);
+      setToast(error.message);
+    }
+  };
+
+  const savePrivacy = async () => {
+    try {
+      setSaving(true);
+      const updated = await apiPut("/api/student/settings/privacy", privacy);
+      setPrivacy(updated);
+      triggerSaved("Privacy settings updated");
+    } catch (error) {
+      setSaving(false);
+      setToast(error.message);
+    }
+  };
+
+  const saveNotifications = async () => {
+    try {
+      setSaving(true);
+      const updated = await apiPut("/api/student/settings/notifications", notifications);
+      setNotifications(updated);
+      triggerSaved("Notification preferences saved");
+    } catch (error) {
+      setSaving(false);
+      setToast(error.message);
+    }
+  };
+
+  const saveAppearance = async () => {
+    try {
+      setSaving(true);
+      const payload = { ...appearance, previewDarkMode: pageThemeDark };
+      const updated = await apiPut("/api/student/settings/appearance", payload);
+      setAppearance(updated);
+      setPageThemeDark(updated.previewDarkMode);
+      triggerSaved("Appearance preferences saved");
+    } catch (error) {
+      setSaving(false);
+      setToast(error.message);
+    }
+  };
+
+  const submitDeleteRequest = async () => {
+    try {
+      const response = await apiPost("/api/student/account/delete-request");
+      setDeleteConfirmOpen(false);
+      setToast(response.message);
+    } catch (error) {
+      setToast(error.message);
+    }
   };
 
   const renderField = (label, key, options = {}) => (
@@ -312,7 +382,7 @@ function StudentSettingsPage() {
                           </div>
 
                           <div className="ss-actions">
-                            <button type="button" className={`ss-btn ss-primary ${saving ? "loading" : ""}`} disabled={saving} onClick={() => triggerSave("Profile changes saved")}>
+                            <button type="button" className={`ss-btn ss-primary ${saving ? "loading" : ""}`} disabled={saving} onClick={saveProfile}>
                               {saving ? "Saving..." : "Save Changes"}
                             </button>
                             {savedPulse ? <span className="ss-success-chip">Saved</span> : null}
@@ -337,7 +407,7 @@ function StudentSettingsPage() {
                         <Toggle checked={privacy.achievementVisibility} onChange={(v) => setPrivacy((p) => ({ ...p, achievementVisibility: v }))} label="Achievement Visibility" hint="Show all approved achievements on public profile." />
                       </div>
                       <div className="ss-actions">
-                        <button type="button" className="ss-btn ss-primary" onClick={() => triggerSave("Privacy settings updated")}>Save Privacy Settings</button>
+                        <button type="button" className="ss-btn ss-primary" onClick={savePrivacy}>Save Privacy Settings</button>
                       </div>
                     </div>
                   ) : null}
@@ -356,7 +426,7 @@ function StudentSettingsPage() {
                         <Toggle checked={notifications.weeklySummary} onChange={(v) => setNotifications((n) => ({ ...n, weeklySummary: v }))} label="Weekly summary email" />
                       </div>
                       <div className="ss-actions">
-                        <button type="button" className="ss-btn ss-primary" onClick={() => triggerSave("Notification preferences saved")}>Save Notification Preferences</button>
+                        <button type="button" className="ss-btn ss-primary" onClick={saveNotifications}>Save Notification Preferences</button>
                       </div>
                     </div>
                   ) : null}
@@ -468,7 +538,7 @@ function StudentSettingsPage() {
                       </div>
 
                       <div className="ss-actions">
-                        <button type="button" className="ss-btn ss-primary" onClick={() => triggerSave("Appearance preferences saved")}>Save Appearance</button>
+                        <button type="button" className="ss-btn ss-primary" onClick={saveAppearance}>Save Appearance</button>
                       </div>
                     </div>
                   ) : null}
@@ -491,14 +561,7 @@ function StudentSettingsPage() {
             <p>This action is permanent and will remove your account access and profile settings. Are you sure you want to continue?</p>
             <div className="ss-modal-actions">
               <button type="button" className="ss-btn ss-outline" onClick={() => setDeleteConfirmOpen(false)}>Cancel</button>
-              <button
-                type="button"
-                className="ss-btn ss-danger"
-                onClick={() => {
-                  setDeleteConfirmOpen(false);
-                  setToast("Delete request submitted for admin confirmation");
-                }}
-              >
+              <button type="button" className="ss-btn ss-danger" onClick={submitDeleteRequest}>
                 Confirm Delete
               </button>
             </div>

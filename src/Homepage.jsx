@@ -337,8 +337,8 @@ function Homepage() {
               <span className="timeline-line" aria-hidden="true" />
               {steps.map(([title, desc], idx) => (
                 <article className="timeline-step" key={title} style={{ transitionDelay: `${idx * 120}ms` }}>
-                  <div className="step-num">0{idx + 1}</div>
-                  <div className="step-card">
+                  <div className="timeline-num">0{idx + 1}</div>
+                  <div className="timeline-card">
                     <h3>{title}</h3>
                     <p>{desc}</p>
                   </div>

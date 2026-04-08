@@ -182,7 +182,7 @@ a {
 .hero {
   position: relative;
   min-height: 90vh;
-  padding-top: 6.5rem;
+  padding-top: 11.25rem;
   display: grid;
   align-items: center;
 }
@@ -255,9 +255,12 @@ a {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 2rem;
   align-items: center;
+  justify-items: center;
+  max-width: 980px;
+  margin-inline: auto;
   padding-bottom: 2.8rem;
 }
 
@@ -279,6 +282,14 @@ a {
   max-width: 12ch;
 }
 
+.hero-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: min(760px, 100%);
+}
+
 .hero-copy .sub {
   margin: 1rem 0 0;
   color: var(--muted);
@@ -291,6 +302,7 @@ a {
   display: flex;
   gap: 0.8rem;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .hero-tags {
@@ -298,6 +310,7 @@ a {
   display: flex;
   gap: 0.55rem;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .hero-tags span {
@@ -331,6 +344,7 @@ a {
 .hero-visual {
   position: relative;
   min-height: 470px;
+  width: min(640px, 100%);
 }
 
 .mockup {
@@ -813,7 +827,7 @@ a {
   transform: translateY(0);
 }
 
-.step-num {
+.timeline-num {
   width: 42px;
   height: 42px;
   border-radius: 14px;
@@ -827,7 +841,7 @@ a {
   z-index: 1;
 }
 
-.step-card {
+.timeline-card {
   border-radius: 18px;
   padding: 1rem;
   background: rgba(255, 255, 255, 0.68);
@@ -836,11 +850,11 @@ a {
   backdrop-filter: blur(10px);
 }
 
-.step-card h3 {
+.timeline-card h3 {
   margin: 0;
 }
 
-.step-card p {
+.timeline-card p {
   margin: 0.45rem 0 0;
   color: #64748b;
   line-height: 1.55;
@@ -1277,7 +1291,7 @@ a {
   }
 
   .hero {
-    padding-top: 7.2rem;
+    padding-top: 11.75rem;
   }
 
   .hero-copy h1 {
