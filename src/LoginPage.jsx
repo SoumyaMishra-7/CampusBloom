@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { apiGet, apiPost } from "./api";
+import { persistAuthTokenFromResponse } from "./services/authSession.js";
 
 const roleMeta = {
   student: {
@@ -300,6 +301,8 @@ function LoginPage() {
         captchaAnswer: forms[role].captchaAnswer.trim(),
         password: forms[role].password
       });
+
+      persistAuthTokenFromResponse(response, role);
 
       submitTimerRef.current = window.setTimeout(() => {
         window.location.href = response.redirectTo;

@@ -1,12 +1,18 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "../services/api.js";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { apiGet, apiPost } from "../api.js";
 import { CURRENT_STUDENT, CURRENT_STUDENT_ID, initialCertificates, makeObjectPreview } from "./certificateSeed.js";
 
 const STORAGE_KEY = "campusbloom.documentVault.certificates";
-const SYNC_EVENT = "campusbloom:certificates-sync";
-const CHANNEL_NAME = "campusbloom-certificates-sync";
 
 const CertificatesContext = createContext(null);
+
+const capabilities = {
+  canCreate: true,
+  canEdit: false,
+  canDelete: false,
+  canModerate: false,
+  hasRealtimeSync: false
+};
 
 function createCertificateId() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -29,6 +35,16 @@ function readLocalCertificates() {
   }
 }
 
+function persistCertificates(nextCertificates) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextCertificates));
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
 function inferFileType(value) {
   const text = String(value || "").toLowerCase();
   if (text.includes("pdf")) return "PDF";
@@ -38,24 +54,35 @@ function inferFileType(value) {
 
 function normalizeStatus(value) {
   const status = String(value || "pending").toLowerCase();
-  if (status === "approved" || status === "rejected") return status;
+  if (status === "verified" || status === "approved") return "approved";
+  if (status === "rejected") return "rejected";
   return "pending";
 }
 
 function normalizeCertificate(certificate) {
-  const fileType = inferFileType(certificate.fileType || certificate.mimeType || certificate.fileName);
+  const normalizedId = String(certificate._id || certificate.id || createCertificateId());
+  const fileType = inferFileType(certificate.fileType || certificate.type || certificate.mimeType || certificate.fileName);
+  const title = certificate.title || certificate.achievement || "Untitled certificate";
+  const uploadedAt = certificate.uploadedAt || certificate.createdAt || new Date().toISOString();
+
   return {
     ...certificate,
-    id: String(certificate.id || createCertificateId()),
-    studentId: certificate.studentId || CURRENT_STUDENT_ID,
+    _id: normalizedId,
+    id: normalizedId,
+    studentId: String(certificate.studentId || CURRENT_STUDENT_ID),
     studentName: certificate.studentName || CURRENT_STUDENT.name,
-    title: certificate.title || certificate.achievement || "Untitled certificate",
-    description: certificate.description || certificate.notes || "",
+    title,
+    description: certificate.description || certificate.remarks || "Uploaded certificate document",
+    category: certificate.category || "General",
+    fileUrl: certificate.fileUrl || certificate.previewUrl || "",
     status: normalizeStatus(certificate.status),
     fileType,
-    fileName: certificate.fileName || `${certificate.title || "certificate"}.${fileType === "PDF" ? "pdf" : "jpg"}`,
-    uploadedAt: certificate.uploadedAt || new Date().toISOString(),
-    updatedAt: certificate.updatedAt || certificate.uploadedAt || new Date().toISOString(),
+    fileName: certificate.fileName || `${title}.${fileType === "PDF" ? "pdf" : "jpg"}`,
+    uploadedAt,
+    createdAt: certificate.createdAt || uploadedAt,
+    updatedAt: certificate.updatedAt || uploadedAt,
+    approvedAt: certificate.approvedAt || null,
+    rejectedAt: certificate.rejectedAt || null,
     previewUrl: certificate.previewUrl || certificate.fileUrl || ""
   };
 }
@@ -65,83 +92,80 @@ function hydrateList(value) {
   return list.map(normalizeCertificate);
 }
 
-function buildFormPayload(input, existing) {
-  const payload = {
-    title: input.title?.trim() || existing?.title || "Untitled certificate",
-    description: input.description?.trim() || existing?.description || "",
-    studentId: input.studentId || existing?.studentId || CURRENT_STUDENT_ID,
-    studentName: input.studentName || existing?.studentName || CURRENT_STUDENT.name,
-    status: normalizeStatus(input.status || existing?.status),
-    fileType: inferFileType(input.file?.type || input.file?.name || existing?.fileType),
-    fileName: input.file?.name || existing?.fileName || "certificate.pdf"
-  };
+function mapSpringCertificate(record) {
+  return normalizeCertificate({
+    id: record.id,
+    title: record.title,
+    description: record.remarks,
+    category: record.category,
+    fileType: record.type,
+    fileName: `${record.title || "certificate"}.${String(record.type || "").toLowerCase() === "pdf" ? "pdf" : "jpg"}`,
+    uploadedAt: record.uploadedAt,
+    createdAt: record.uploadedAt,
+    updatedAt: record.uploadedAt,
+    status: record.status,
+    achievementLink: record.achievementLink,
+    previewKind: record.previewKind,
+    studentId: CURRENT_STUDENT_ID,
+    studentName: CURRENT_STUDENT.name
+  });
+}
 
-  if (input.file instanceof File) {
-    payload.previewUrl = makeObjectPreview(input.file);
+async function fetchCertificatesFromSpring() {
+  const response = await apiGet("/api/student/certificates");
+  const list = Array.isArray(response) ? response : [];
+  return list.map(mapSpringCertificate);
+}
+
+async function uploadCertificateToSpring(input) {
+  const file = input.file instanceof File ? input.file : null;
+  const formData = new FormData();
+  formData.append("fileName", (input.title || file?.name || "Uploaded certificate").trim());
+  formData.append("fileType", inferFileType(file?.type || file?.name || input.fileType) === "PDF" ? "pdf" : "image");
+  formData.append("sizeMB", file ? (file.size / (1024 * 1024)).toFixed(2) : "1.0");
+
+  const response = await apiPost("/api/student/certificates/upload", formData);
+  const created = mapSpringCertificate(response || {});
+
+  if (file) {
+    created.previewUrl = makeObjectPreview(file);
+    created.fileUrl = created.previewUrl;
+    created.fileName = file.name;
+    created.fileType = inferFileType(file.type || file.name);
   }
 
-  return payload;
+  if (input.description?.trim()) {
+    created.description = input.description.trim();
+  }
+
+  if (input.category?.trim()) {
+    created.category = input.category.trim();
+  }
+
+  return normalizeCertificate(created);
 }
 
 export function CertificatesProvider({ children }) {
   const [certificates, setCertificates] = useState(() => hydrateList([]));
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState("student");
+  const [apiError, setApiError] = useState("");
   const [busyIds, setBusyIds] = useState([]);
-  const channelRef = useRef(null);
-  const socketRef = useRef(null);
-
-  const setBusy = useCallback((id, isBusy) => {
-    setBusyIds((prev) => {
-      const next = new Set(prev);
-      if (isBusy) next.add(id);
-      else next.delete(id);
-      return Array.from(next);
-    });
-  }, []);
-
-  const persist = useCallback((nextCertificates) => {
-    if (typeof window === "undefined") return;
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextCertificates));
-    } catch {
-      // Ignore storage failures.
-    }
-  }, []);
-
-  const publishSync = useCallback((nextCertificates, action, meta = {}) => {
-    const payload = { certificates: nextCertificates, action, meta, updatedAt: Date.now() };
-
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: payload }));
-    }
-
-    if (channelRef.current) {
-      channelRef.current.postMessage(payload);
-    }
-
-    if (socketRef.current?.connected) {
-      socketRef.current.emit("certificates:sync", payload);
-    }
-  }, []);
-
-  const applyNext = useCallback((nextCertificates, action, meta = {}) => {
-    setCertificates(nextCertificates);
-    persist(nextCertificates);
-    publishSync(nextCertificates, action, meta);
-  }, [persist, publishSync]);
 
   useEffect(() => {
     let mounted = true;
 
-    apiGet("/certificates")
-      .then((response) => {
+    fetchCertificatesFromSpring()
+      .then((list) => {
         if (!mounted) return;
-        const list = hydrateList(Array.isArray(response) ? response : response?.data || []);
-        setCertificates(list.length ? list : hydrateList(readLocalCertificates()));
+        const next = hydrateList(list);
+        setApiError("");
+        setCertificates(next.length ? next : hydrateList(readLocalCertificates()));
+        persistCertificates(next.length ? next : hydrateList(readLocalCertificates()));
       })
-      .catch(() => {
+      .catch((error) => {
         if (!mounted) return;
+        setApiError(error.message || "Failed to load certificates.");
         setCertificates(hydrateList(readLocalCertificates()));
       })
       .finally(() => {
@@ -153,197 +177,60 @@ export function CertificatesProvider({ children }) {
     };
   }, []);
 
-  useEffect(() => {
-    if (typeof BroadcastChannel === "undefined") return undefined;
-    const channel = new BroadcastChannel(CHANNEL_NAME);
-    channelRef.current = channel;
+  const setBusy = (id, isBusy) => {
+    setBusyIds((prev) => {
+      const next = new Set(prev);
+      if (isBusy) next.add(id);
+      else next.delete(id);
+      return Array.from(next);
+    });
+  };
 
-    const onMessage = (event) => {
-      const payload = event.data;
-      if (!payload?.certificates || !Array.isArray(payload.certificates)) return;
-      setCertificates(hydrateList(payload.certificates));
-      persist(hydrateList(payload.certificates));
-    };
-
-    channel.addEventListener("message", onMessage);
-    return () => {
-      channel.removeEventListener("message", onMessage);
-      channel.close();
-      channelRef.current = null;
-    };
-  }, [persist]);
-
-  useEffect(() => {
-    const onWindowSync = (event) => {
-      const payload = event.detail;
-      if (!payload?.certificates || !Array.isArray(payload.certificates)) return;
-      setCertificates(hydrateList(payload.certificates));
-      persist(hydrateList(payload.certificates));
-    };
-
-    window.addEventListener(SYNC_EVENT, onWindowSync);
-    return () => window.removeEventListener(SYNC_EVENT, onWindowSync);
-  }, [persist]);
-
-  useEffect(() => {
-    const socketUrl = import.meta.env.VITE_SOCKET_URL?.trim() || import.meta.env.VITE_API_BASE_URL?.trim();
-    if (!socketUrl) return undefined;
-
-    let active = true;
-    import("socket.io-client")
-      .then(({ io }) => {
-        if (!active) return;
-        const socket = io(socketUrl, {
-          transports: ["websocket"],
-          autoConnect: true,
-          reconnection: true,
-          reconnectionAttempts: 2
-        });
-        socketRef.current = socket;
-
-        socket.on("certificates:sync", (payload) => {
-          if (!payload?.certificates || !Array.isArray(payload.certificates)) return;
-          setCertificates(hydrateList(payload.certificates));
-          persist(hydrateList(payload.certificates));
-        });
-      })
-      .catch(() => {
-        // Socket.IO is optional; BroadcastChannel covers same-tab sync.
-      });
-
-    return () => {
-      active = false;
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        socketRef.current = null;
-      }
-    };
-  }, [persist]);
-
-  const refreshCertificates = useCallback(async () => {
+  const refreshCertificates = async () => {
     setLoading(true);
     try {
-      const response = await apiGet("/certificates");
-      const list = hydrateList(Array.isArray(response) ? response : response?.data || []);
-      applyNext(list.length ? list : hydrateList(readLocalCertificates()), "refresh");
-    } catch {
-      applyNext(hydrateList(readLocalCertificates()), "refresh-fallback");
+      const list = hydrateList(await fetchCertificatesFromSpring());
+      setApiError("");
+      setCertificates(list.length ? list : hydrateList(readLocalCertificates()));
+      persistCertificates(list.length ? list : hydrateList(readLocalCertificates()));
+    } catch (error) {
+      setApiError(error.message || "Failed to refresh certificates.");
+      setCertificates(hydrateList(readLocalCertificates()));
     } finally {
       setLoading(false);
     }
-  }, [applyNext]);
+  };
 
-  const createCertificate = useCallback(async (input) => {
+  const createCertificate = async (input) => {
     const tempId = `temp-${Date.now()}`;
     setBusy(tempId, true);
 
-    const payload = buildFormPayload(input);
-    const requestBody = input.file instanceof File ? (() => {
-      const formData = new FormData();
-      formData.append("title", payload.title);
-      formData.append("description", payload.description);
-      formData.append("studentId", payload.studentId);
-      formData.append("studentName", payload.studentName);
-      formData.append("status", payload.status);
-      formData.append("fileType", payload.fileType);
-      formData.append("fileName", payload.fileName);
-      formData.append("file", input.file);
-      return formData;
-    })() : payload;
-
     try {
-      const response = await apiPost("/certificates", requestBody);
-      const created = normalizeCertificate({ ...payload, ...(response?.data || response || {}), id: response?.id || response?.data?.id || tempId });
-      const next = [created, ...certificates];
-      applyNext(next, "create", { id: created.id });
+      const created = await uploadCertificateToSpring(input);
+      const next = [created, ...certificates.filter((certificate) => certificate.id !== created.id)];
+      setApiError("");
+      setCertificates(next);
+      persistCertificates(next);
       return created;
-    } catch {
-      const created = normalizeCertificate({ ...payload, id: tempId });
-      const next = [created, ...certificates];
-      applyNext(next, "create-local", { id: created.id });
-      return created;
+    } catch (error) {
+      setApiError(error.message || "Upload failed.");
+      throw error;
     } finally {
       setBusy(tempId, false);
     }
-  }, [applyNext, certificates, setBusy]);
+  };
 
-  const updateCertificate = useCallback(async (id, input) => {
-    const existing = certificates.find((certificate) => certificate.id === id);
-    if (!existing) return null;
-
-    setBusy(id, true);
-    const nextPayload = buildFormPayload(input, existing);
-    const requestBody = input.file instanceof File ? (() => {
-      const formData = new FormData();
-      Object.entries(nextPayload).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) formData.append(key, value);
-      });
-      formData.append("file", input.file);
-      return formData;
-    })() : nextPayload;
-
-    try {
-      const response = await apiPut(`/certificates/${id}`, requestBody);
-      const updated = normalizeCertificate({ ...existing, ...nextPayload, ...(response?.data || response || {}), id });
-      const next = certificates.map((certificate) => (certificate.id === id ? updated : certificate));
-      applyNext(next, "update", { id });
-      return updated;
-    } catch {
-      const fallback = normalizeCertificate({ ...existing, ...nextPayload, id });
-      const next = certificates.map((certificate) => (certificate.id === id ? fallback : certificate));
-      applyNext(next, "update-local", { id });
-      return fallback;
-    } finally {
-      setBusy(id, false);
-    }
-  }, [applyNext, certificates, setBusy]);
-
-  const removeCertificate = useCallback(async (id) => {
-    const existing = certificates.find((certificate) => certificate.id === id);
-    if (!existing) return null;
-
-    setBusy(id, true);
-    try {
-      await apiDelete(`/certificates/${id}`);
-    } catch {
-      // Keep local delete so the UI remains responsive even if the backend is unavailable.
-    }
-
-    const next = certificates.filter((certificate) => certificate.id !== id);
-    applyNext(next, "delete", { id });
-    setBusy(id, false);
-    return existing;
-  }, [applyNext, certificates, setBusy]);
-
-  const updateCertificateStatus = useCallback(async (id, status) => {
-    const existing = certificates.find((certificate) => certificate.id === id);
-    if (!existing) return null;
-
-    setBusy(id, true);
-    const normalizedStatus = status === "approved" ? "approved" : status === "rejected" ? "rejected" : "pending";
-
-    try {
-      const response = await apiPatch(`/certificates/${id}/status`, { status: normalizedStatus });
-      const updated = normalizeCertificate({ ...existing, status: normalizedStatus, updatedAt: new Date().toISOString(), ...(response?.data || response || {}) });
-      const next = certificates.map((certificate) => (certificate.id === id ? updated : certificate));
-      applyNext(next, "status", { id, status: normalizedStatus });
-      return updated;
-    } catch {
-      const fallback = normalizeCertificate({ ...existing, status: normalizedStatus, updatedAt: new Date().toISOString() });
-      const next = certificates.map((certificate) => (certificate.id === id ? fallback : certificate));
-      applyNext(next, "status-local", { id, status: normalizedStatus });
-      return fallback;
-    } finally {
-      setBusy(id, false);
-    }
-  }, [applyNext, certificates, setBusy]);
+  const unsupportedMutation = () => {
+    throw new Error("This action is not available on the Spring backend yet.");
+  };
 
   const value = useMemo(() => {
-    const studentCertificates = certificates.filter((certificate) => certificate.studentId === CURRENT_STUDENT_ID);
+    const studentCertificates = certificates.filter((certificate) => String(certificate.studentId) === String(CURRENT_STUDENT_ID));
     const adminCertificates = certificates;
 
     return {
       loading,
+      apiError,
       userRole,
       setUserRole,
       certificates,
@@ -353,12 +240,13 @@ export function CertificatesProvider({ children }) {
       busyIds,
       refreshCertificates,
       createCertificate,
-      updateCertificate,
-      removeCertificate,
-      updateCertificateStatus,
-      isBusy: (id) => busyIds.includes(id)
+      updateCertificate: unsupportedMutation,
+      removeCertificate: unsupportedMutation,
+      updateCertificateStatus: unsupportedMutation,
+      isBusy: (id) => busyIds.includes(id),
+      capabilities
     };
-  }, [busyIds, certificates, createCertificate, loading, refreshCertificates, removeCertificate, updateCertificate, updateCertificateStatus, userRole]);
+  }, [apiError, busyIds, certificates, loading, userRole]);
 
   return <CertificatesContext.Provider value={value}>{children}</CertificatesContext.Provider>;
 }

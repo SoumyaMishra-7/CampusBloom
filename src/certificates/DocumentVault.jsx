@@ -118,6 +118,7 @@ function SkeletonCard() {
 export default function DocumentVault({ role = "student" }) {
   const {
     loading,
+    apiError,
     userRole,
     setUserRole,
     studentCertificates,
@@ -129,13 +130,14 @@ export default function DocumentVault({ role = "student" }) {
     removeCertificate,
     updateCertificateStatus,
     refreshCertificates,
-    isBusy
+    isBusy,
+    capabilities
   } = useCertificates();
 
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("newest");
-  const [form, setForm] = useState({ title: "", description: "", file: null });
+  const [form, setForm] = useState({ title: "", description: "", category: "General", file: null });
   const [editingId, setEditingId] = useState("");
   const [dragging, setDragging] = useState(false);
   const [preview, setPreview] = useState(null);
@@ -183,7 +185,7 @@ export default function DocumentVault({ role = "student" }) {
   }, [certificates]);
 
   const resetForm = () => {
-    setForm({ title: "", description: "", file: null });
+    setForm({ title: "", description: "", category: "General", file: null });
     setEditingId("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -195,7 +197,7 @@ export default function DocumentVault({ role = "student" }) {
 
   const populateForm = (certificate) => {
     setEditingId(certificate.id);
-    setForm({ title: certificate.title, description: certificate.description || "", file: null });
+    setForm({ title: certificate.title, description: certificate.description || "", category: certificate.category || "General", file: null });
     setToast({ type: "info", title: "Edit mode", text: `${certificate.title} is ready for editing.` });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -208,12 +210,22 @@ export default function DocumentVault({ role = "student" }) {
 
     const title = form.title.trim();
     const description = form.description.trim();
+    const category = form.category.trim();
     if (!title) {
       notify("Title required", "Please add a certificate title.", "danger");
       return;
     }
+    if (!category) {
+      notify("Category required", "Please choose a category.", "danger");
+      return;
+    }
     if (!editingId && !form.file) {
       notify("File required", "Upload a PDF or image certificate before saving.", "danger");
+      return;
+    }
+
+    if (editingId && !capabilities.canEdit) {
+      notify("Editing unavailable", "The Spring backend currently supports listing and uploading certificates only.", "danger");
       return;
     }
 
@@ -222,6 +234,7 @@ export default function DocumentVault({ role = "student" }) {
     const payload = {
       title,
       description,
+      category,
       file: form.file || undefined,
       status: nextStatus,
       studentId: currentStudent.id,
@@ -309,7 +322,7 @@ export default function DocumentVault({ role = "student" }) {
                     <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">Student View</p>
                     <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em]">Upload or edit your certificate</h2>
                     <p className="mt-1 text-sm text-slate-600">
-                      Drag and drop a PDF or image, then add the title and description. Approved items are locked from editing.
+                      Drag and drop a PDF or image, then add the title and description. This Spring-backed view currently supports upload and listing.
                     </p>
                   </div>
                   <button
@@ -331,6 +344,21 @@ export default function DocumentVault({ role = "student" }) {
                       className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                       placeholder="Certificate title"
                     />
+                  </label>
+                  <label className="grid gap-2 text-sm font-medium text-slate-700">
+                    Category
+                    <select
+                      value={form.category}
+                      onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value }))}
+                      className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                    >
+                      <option value="General">General</option>
+                      <option value="Technical">Technical</option>
+                      <option value="Sports">Sports</option>
+                      <option value="Cultural">Cultural</option>
+                      <option value="Leadership">Leadership</option>
+                      <option value="Research">Research</option>
+                    </select>
                   </label>
                   <label className="grid gap-2 text-sm font-medium text-slate-700">
                     File
@@ -372,6 +400,7 @@ export default function DocumentVault({ role = "student" }) {
                   <p className="text-sm text-slate-500">
                     {editingId ? `Editing ${certificates.find((item) => item.id === editingId)?.title || "certificate"}` : "Ready to upload a new certificate"}
                   </p>
+                  {apiError ? <p className="text-sm text-rose-600">{apiError}</p> : null}
                   <div className="flex flex-wrap gap-3">
                     {editingId ? (
                       <button
@@ -399,6 +428,7 @@ export default function DocumentVault({ role = "student" }) {
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">Certificates</p>
                   <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em]">{role === "admin" ? "All student submissions" : `${currentStudent.name}'s documents`}</h2>
+                  {apiError ? <p className="mt-2 text-sm text-rose-600">{apiError}</p> : null}
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
@@ -449,8 +479,9 @@ export default function DocumentVault({ role = "student" }) {
                     const locked = role === "student" && certificate.status === "approved";
                     const fileUrl = certificateFileUrl(certificate);
                     const busy = isBusy(certificate.id);
-                    const canEdit = role === "student" && certificate.status !== "approved";
-                    const canDelete = role === "student" || role === "admin";
+                    const canEdit = capabilities.canEdit && role === "student" && certificate.status !== "approved";
+                    const canDelete = capabilities.canDelete && (role === "student" || role === "admin");
+                    const canModerate = capabilities.canModerate && role === "admin";
 
                     return (
                       <article key={certificate.id} className="group overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.06)] transition hover:-translate-y-1 hover:shadow-[0_24px_54px_rgba(15,23,42,0.08)]">
@@ -510,34 +541,49 @@ export default function DocumentVault({ role = "student" }) {
 
                             {role === "student" ? (
                               <>
-                                <button
-                                  type="button"
-                                  disabled={!canEdit || busy}
-                                  onClick={() => canEdit && populateForm(certificate)}
-                                  className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition ${canEdit ? "border border-slate-200 bg-white text-slate-700 hover:-translate-y-0.5 hover:border-indigo-200 hover:text-indigo-700" : "cursor-not-allowed border border-slate-200 bg-slate-100 text-slate-400"}`}
-                                >
-                                  <PencilIcon />
-                                  {certificate.status === "rejected" ? "Edit & Resubmit" : "Edit"}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    populateForm(certificate);
-                                    window.requestAnimationFrame(() => fileInputRef.current?.click());
-                                  }}
-                                  disabled={busy || certificate.status === "approved"}
-                                  className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition ${certificate.status === "approved" ? "cursor-not-allowed border border-slate-200 bg-slate-100 text-slate-400" : "border border-indigo-200 bg-indigo-50 text-indigo-700 hover:-translate-y-0.5 hover:bg-indigo-100"}`}
-                                >
-                                  <UploadIcon />
-                                  {certificate.status === "rejected" ? "Resubmit" : "Replace File"}
-                                </button>
+                                {capabilities.canEdit ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      disabled={!canEdit || busy}
+                                      onClick={() => canEdit && populateForm(certificate)}
+                                      className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition ${canEdit ? "border border-slate-200 bg-white text-slate-700 hover:-translate-y-0.5 hover:border-indigo-200 hover:text-indigo-700" : "cursor-not-allowed border border-slate-200 bg-slate-100 text-slate-400"}`}
+                                    >
+                                      <PencilIcon />
+                                      {certificate.status === "rejected" ? "Edit & Resubmit" : "Edit"}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        populateForm(certificate);
+                                        window.requestAnimationFrame(() => fileInputRef.current?.click());
+                                      }}
+                                      disabled={busy || certificate.status === "approved"}
+                                      className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition ${certificate.status === "approved" ? "cursor-not-allowed border border-slate-200 bg-slate-100 text-slate-400" : "border border-indigo-200 bg-indigo-50 text-indigo-700 hover:-translate-y-0.5 hover:bg-indigo-100"}`}
+                                    >
+                                      <UploadIcon />
+                                      {certificate.status === "rejected" ? "Resubmit" : "Replace File"}
+                                    </button>
+                                  </>
+                                ) : (
+                                  <span className="inline-flex items-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-500">
+                                    Editing will be enabled after Spring backend support is added.
+                                  </span>
+                                )}
                               </>
-                            ) : (
+                            ) : canModerate ? (
                               <>
                                 <button
                                   type="button"
                                   disabled={busy}
-                                  onClick={() => updateCertificateStatus(certificate.id, "approved")}
+                                  onClick={async () => {
+                                    try {
+                                      await updateCertificateStatus(certificate.id, "approved");
+                                      notify("Certificate approved", `${certificate.title} was approved.`);
+                                    } catch (error) {
+                                      notify("Approval failed", error.message || "Could not approve certificate.", "danger");
+                                    }
+                                  }}
                                   className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:-translate-y-0.5 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                   <CheckIcon />
@@ -546,13 +592,24 @@ export default function DocumentVault({ role = "student" }) {
                                 <button
                                   type="button"
                                   disabled={busy}
-                                  onClick={() => updateCertificateStatus(certificate.id, "rejected")}
+                                  onClick={async () => {
+                                    try {
+                                      await updateCertificateStatus(certificate.id, "rejected");
+                                      notify("Certificate rejected", `${certificate.title} was rejected.`);
+                                    } catch (error) {
+                                      notify("Rejection failed", error.message || "Could not reject certificate.", "danger");
+                                    }
+                                  }}
                                   className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 transition hover:-translate-y-0.5 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                   <XIcon />
                                   Reject
                                 </button>
                               </>
+                            ) : (
+                              <span className="inline-flex items-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-500">
+                                Review-only mode on the current Spring backend.
+                              </span>
                             )}
 
                             {canDelete ? (
@@ -598,17 +655,17 @@ export default function DocumentVault({ role = "student" }) {
                 </button>
               </div>
               <div className="mt-4 space-y-3 text-sm text-slate-600">
-                <p>Student uploads, edits, deletes, and admin approvals are mirrored through shared state and realtime listeners.</p>
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <div className="flex items-center gap-2 text-slate-900">
-                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                    <span className="font-semibold">Connected</span>
+                  <p>Certificate data is loaded from the Spring backend on port 8080. Uploads sync after save or manual refresh.</p>
+                  <div className="rounded-2xl bg-slate-50 p-4">
+                    <div className="flex items-center gap-2 text-slate-900">
+                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                      <span className="font-semibold">Spring Backend Connected</span>
+                    </div>
+                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                    Advanced actions like edit, delete, and approval are disabled here because the active Spring API currently exposes list and upload endpoints only.
+                    </p>
                   </div>
-                  <p className="mt-2 text-xs leading-5 text-slate-500">
-                    Socket.IO connects automatically when <span className="font-semibold">VITE_SOCKET_URL</span> is configured; BroadcastChannel keeps the UI in sync in the browser.
-                  </p>
                 </div>
-              </div>
             </section>
 
             <section className="rounded-[2rem] border border-slate-200/80 bg-white/85 p-5 shadow-[0_18px_48px_rgba(15,23,42,0.06)] backdrop-blur">
@@ -727,9 +784,13 @@ export default function DocumentVault({ role = "student" }) {
               <button
                 type="button"
                 onClick={async () => {
-                  await removeCertificate(confirmDelete.id);
-                  setConfirmDelete(null);
-                  notify("Certificate deleted", `${confirmDelete.title} was removed from the vault.`);
+                  try {
+                    await removeCertificate(confirmDelete.id);
+                    setConfirmDelete(null);
+                    notify("Certificate deleted", `${confirmDelete.title} was removed from the vault.`);
+                  } catch (error) {
+                    notify("Delete failed", error.message || "Could not delete certificate.", "danger");
+                  }
                 }}
                 className="rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white shadow-[0_16px_34px_rgba(239,68,68,0.22)]"
               >
