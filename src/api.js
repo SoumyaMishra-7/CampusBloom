@@ -15,13 +15,25 @@ function resolveApiBaseUrl() {
 
 const API_BASE_URL = resolveApiBaseUrl();
 
+function getAuthToken() {
+  if (typeof window === "undefined") return "";
+  return (
+    window.localStorage.getItem("cb.admin.authToken") ||
+    window.localStorage.getItem("cb.authToken") ||
+    window.localStorage.getItem("authToken") ||
+    ""
+  );
+}
+
 async function request(path, options = {}) {
   const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
   const isBlob = typeof Blob !== "undefined" && options.body instanceof Blob;
   const isJsonBody = options.body !== undefined && options.body !== null && !isFormData && !isBlob && typeof options.body !== "string";
+  const token = getAuthToken();
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(isFormData || isBlob ? {} : { "Content-Type": "application/json" }),
       ...(options.headers || {})
     },

@@ -1,451 +1,441 @@
 import { useEffect, useMemo, useState } from "react";
-import "./admin-approvals-management.css";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  changeCertificateStatus,
+  clearRowHighlight,
+  fetchApprovalsSnapshot,
+  selectApprovalsFilters,
+  selectApprovalsMeta,
+  selectApprovalsStats,
+  selectPagedQueue,
+  setApprovalsFilters
+} from "./store/approvalsSlice.js";
 
-const ROWS = [
-  { id: "APR-3201", student: "Aarav Sharma", studentId: "S001", title: "National Robotics Challenge Winner", category: "Technical", level: "National", department: "CSE", submissionType: "Achievement", submittedAt: "2026-02-24T09:20:00", hasCertificate: true, status: "Pending", eventName: "National Robotics Challenge 2026", eventDate: "2026-02-16", description: "Team autonomous navigation event winner.", remarks: "", certificateFile: "robotics-aarav.pdf" },
-  { id: "APR-3200", student: "Diya Nair", studentId: "S002", title: "Inter-University Debate Finalist", category: "Cultural", level: "State", department: "ECE", submissionType: "Certificate", submittedAt: "2026-02-24T08:42:00", hasCertificate: true, status: "Pending", eventName: "Debate Forum", eventDate: "2026-02-10", description: "Reached final round in policy debate.", remarks: "", certificateFile: "debate-diya.jpg" },
-  { id: "APR-3199", student: "Rohan Mehta", studentId: "S003", title: "State Athletics Silver Medal", category: "Sports", level: "State", department: "Sports", submissionType: "Achievement", submittedAt: "2026-02-23T15:04:00", hasCertificate: true, status: "Pending", eventName: "State Collegiate Sports Meet", eventDate: "2026-02-12", description: "Relay silver medal performance.", remarks: "", certificateFile: "athletics-rohan.png" },
-  { id: "APR-3198", student: "Sara Khan", studentId: "S004", title: "Community Leadership Fellowship", category: "Leadership", level: "National", department: "MBA", submissionType: "Achievement", submittedAt: "2026-02-23T12:18:00", hasCertificate: false, status: "Rejected", eventName: "Youth Leadership Fellowship", eventDate: "2026-02-07", description: "Leadership fellowship nomination record.", remarks: "Event year mismatch", certificateFile: "" },
-  { id: "APR-3197", student: "Ishita Verma", studentId: "S005", title: "Classical Music Ensemble Performance", category: "Cultural", level: "College", department: "Arts", submissionType: "Certificate", submittedAt: "2026-02-23T11:30:00", hasCertificate: true, status: "Approved", eventName: "BloomFest 2026", eventDate: "2026-02-01", description: "Cultural fest ensemble recognition.", remarks: "Verified with coordinator", certificateFile: "music-ishita.pdf" },
-  { id: "APR-3196", student: "Nitin Rao", studentId: "S006", title: "Hackathon Problem Solving Excellence", category: "Technical", level: "College", department: "CSE", submissionType: "Certificate", submittedAt: "2026-02-22T17:56:00", hasCertificate: true, status: "Pending", eventName: "CampusBloom HackSprint", eventDate: "2026-02-05", description: "Top problem-solving score in hackathon.", remarks: "", certificateFile: "hackathon-nitin.pdf" },
-  { id: "APR-3195", student: "Meera Iyer", studentId: "S007", title: "National Robotics Challenge Winner", category: "Technical", level: "National", department: "CSE", submissionType: "Certificate", submittedAt: "2026-02-22T16:08:00", hasCertificate: true, status: "Approved", eventName: "National Robotics Challenge 2026", eventDate: "2026-02-16", description: "Team achievement certificate upload.", remarks: "Roster matched", certificateFile: "robotics-meera.jpeg" },
-  { id: "APR-3194", student: "Kunal Patel", studentId: "S008", title: "Hackathon Problem Solving Excellence", category: "Technical", level: "College", department: "ECE", submissionType: "Certificate", submittedAt: "2026-02-22T10:13:00", hasCertificate: true, status: "Pending", eventName: "CampusBloom HackSprint", eventDate: "2026-02-05", description: "Certificate upload pending manual review.", remarks: "", certificateFile: "hackathon-kunal.png" }
-];
+function formatDateTime(value) {
+  return new Date(value).toLocaleString(undefined, {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
 
-const CATS = ["Technical", "Sports", "Cultural", "Leadership"];
-const DEPTS = ["CSE", "ECE", "Sports", "MBA", "Arts"];
-const TYPES = ["Achievement", "Certificate"];
-const STATUSES = ["Pending", "Approved", "Rejected"];
-const DATE_RANGES = ["Today", "Last 7 Days", "Last 30 Days", "Academic Term"];
+function formatSyncTime(ts) {
+  if (!ts) return "Not synced yet";
+  return `Synced at ${new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
+}
 
-const fmtDate = (d) => new Date(d).toLocaleDateString(undefined, { month: "short", day: "2-digit", year: "numeric" });
-const fmtDateTime = (d) =>
-  new Date(d).toLocaleString(undefined, { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
-
-function CountUp({ value, suffix = "" }) {
-  const [n, setN] = useState(0);
-  useEffect(() => {
-    let raf = 0;
-    let start = 0;
-    const run = (t) => {
-      if (!start) start = t;
-      const p = Math.min((t - start) / 700, 1);
-      const e = 1 - (1 - p) ** 3;
-      setN(Math.round(value * e));
-      if (p < 1) raf = requestAnimationFrame(run);
-    };
-    raf = requestAnimationFrame(run);
-    return () => cancelAnimationFrame(raf);
-  }, [value]);
-  return <>{n}{suffix}</>;
+function StatCard({ label, value, helper, accent }) {
+  return (
+    <article className="rounded-2xl border border-slate-200/80 bg-white/90 p-4 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</p>
+      <h3 className={`mt-2 text-2xl font-semibold tracking-tight ${accent}`}>{value}</h3>
+      <p className="mt-1 text-xs text-slate-500">{helper}</p>
+    </article>
+  );
 }
 
 export default function AdminApprovalsManagementView() {
-  const [rows, setRows] = useState(ROWS);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState([]);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [reviewItem, setReviewItem] = useState(null);
-  const [reviewRemarks, setReviewRemarks] = useState("");
-  const [toast, setToast] = useState(null);
-  const [bulkConfirm, setBulkConfirm] = useState({ open: false, action: "" });
-  const [bulkLoading, setBulkLoading] = useState(false);
-  const [notif, setNotif] = useState(4);
-  const [progress, setProgress] = useState(68);
-  const [filters, setFilters] = useState({
-    dateRange: "Last 7 Days",
-    category: "All",
-    department: "All",
-    submissionType: "All",
-    status: "Pending"
-  });
-  const [timeline, setTimeline] = useState([
-    "APR-3201 entered pending queue",
-    "APR-3197 approved by Admin AK",
-    "APR-3198 rejected with remarks",
-    "Auto-refresh synchronized submissions"
-  ]);
+  const dispatch = useDispatch();
+  const filters = useSelector(selectApprovalsFilters);
+  const stats = useSelector(selectApprovalsStats);
+  const { items, total, page, totalPages, pageSize } = useSelector(selectPagedQueue);
+  const { loading, error, syncedAt, newlyAddedIds } = useSelector(selectApprovalsMeta);
+
+  const [busyId, setBusyId] = useState("");
+  const [rejectModal, setRejectModal] = useState(null);
+  const [rejectRemarks, setRejectRemarks] = useState("");
+  const [previewRow, setPreviewRow] = useState(null);
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 900);
-    return () => clearTimeout(t);
-  }, []);
+    dispatch(fetchApprovalsSnapshot());
+  }, [dispatch]);
 
   useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 2400);
-    return () => clearTimeout(t);
-  }, [toast]);
-
-  useEffect(() => setPage(1), [filters]);
-
-  useEffect(() => {
-    const tick = setInterval(() => {
-      setNotif((n) => Math.min(9, n + 1));
-      setProgress((p) => (p >= 92 ? 70 : p + 2));
-      setTimeline((prev) => [`Auto-refresh queue sync • ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`, ...prev].slice(0, 6));
-    }, 22000);
-    return () => clearInterval(tick);
-  }, []);
-
-  useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && (setFiltersOpen(false), setReviewItem(null), setBulkConfirm({ open: false, action: "" }));
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
-  const filtered = useMemo(() => {
-    const now = new Date("2026-02-24T00:00:00");
-    return rows.filter((r) => {
-      const dt = new Date(r.submittedAt);
-      let dateOk = true;
-      if (filters.dateRange === "Today") dateOk = r.submittedAt.startsWith("2026-02-24");
-      if (filters.dateRange === "Last 7 Days") dateOk = (now - dt) / 86400000 <= 7;
-      if (filters.dateRange === "Last 30 Days") dateOk = (now - dt) / 86400000 <= 30;
-      if (filters.dateRange === "Academic Term") dateOk = dt >= new Date("2026-01-01T00:00:00");
-      return (
-        dateOk &&
-        (filters.category === "All" || r.category === filters.category) &&
-        (filters.department === "All" || r.department === filters.department) &&
-        (filters.submissionType === "All" || r.submissionType === filters.submissionType) &&
-        (filters.status === "All" || r.status === filters.status)
-      );
-    }).sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
-  }, [rows, filters]);
-
-  const stats = useMemo(() => {
-    const today = "2026-02-24";
-    const approvedToday = rows.filter((r) => r.status === "Approved" && r.submittedAt.startsWith(today)).length;
-    const rejectedToday = rows.filter((r) => r.status === "Rejected" && r.submittedAt.startsWith(today)).length;
-    const pending = rows.filter((r) => r.status === "Pending").length;
-    return { pending, approvedToday, rejectedToday, avgHours: 6.4 };
-  }, [rows]);
-
-  const pageSize = 6;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const current = Math.min(page, totalPages);
-  const visible = filtered.slice((current - 1) * pageSize, current * pageSize);
-  const visibleIds = visible.map((r) => r.id);
-  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.includes(id));
-
-  const toggleOne = (id) => setSelected((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
-  const toggleVisible = () => setSelected((p) => (allVisibleSelected ? p.filter((id) => !visibleIds.includes(id)) : Array.from(new Set([...p, ...visibleIds]))));
-  const setF = (k, v) => setFilters((p) => ({ ...p, [k]: v }));
-
-  const openReview = (row) => {
-    setReviewItem(row);
-    setReviewRemarks(row.remarks || "");
-    setNotif((n) => Math.max(0, n - 1));
-  };
-
-  const updateStatus = (id, status, remarks) => {
-    setRows((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status, remarks: remarks ?? r.remarks } : r))
+    if (!newlyAddedIds.length) return undefined;
+    const timers = newlyAddedIds.map((id) =>
+      window.setTimeout(() => dispatch(clearRowHighlight(id)), 3500)
     );
-    setTimeline((prev) => [`${id} ${status.toLowerCase()} by Admin AK`, ...prev].slice(0, 6));
-    setToast({ type: status === "Rejected" ? "danger" : "ok", title: `${status} successfully`, text: `${id} updated.` });
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+    };
+  }, [dispatch, newlyAddedIds]);
+
+  const categoryOptions = useMemo(() => {
+    const all = ["All", ...new Set(items.map((row) => row.category))];
+    return all;
+  }, [items]);
+
+  const onStatusUpdate = async (id, status, remarks = "") => {
+    setBusyId(id);
+    try {
+      await dispatch(changeCertificateStatus({ id, status, remarks })).unwrap();
+      setPreviewRow((current) => (current?.id === id ? null : current));
+      if (status === "rejected") {
+        setRejectModal(null);
+        setRejectRemarks("");
+      }
+    } finally {
+      setBusyId("");
+    }
   };
 
-  const runBulk = (action) => setBulkConfirm({ open: true, action });
-  const confirmBulkAction = () => {
-    const { action } = bulkConfirm;
-    if (!action || !selected.length) return;
-    setBulkLoading(true);
-    setTimeout(() => {
-      if (action === "Bulk Approve") {
-        setRows((prev) => prev.map((r) => (selected.includes(r.id) ? { ...r, status: "Approved" } : r)));
-      }
-      if (action === "Bulk Reject") {
-        setRows((prev) => prev.map((r) => (selected.includes(r.id) ? { ...r, status: "Rejected" } : r)));
-      }
-      setBulkLoading(false);
-      setBulkConfirm({ open: false, action: "" });
-      setToast({ type: action.includes("Reject") ? "danger" : "ok", title: action, text: `${selected.length} items processed.` });
-      setTimeline((prev) => [`${action} executed for ${selected.length} approvals`, ...prev].slice(0, 6));
-    }, 1200);
-  };
+  const startIndex = total ? (page - 1) * pageSize + 1 : 0;
+  const endIndex = Math.min(page * pageSize, total);
 
   return (
-    <div className="aap-page">
-      <section className="aap-head aap-reveal" style={{ "--aap-delay": "20ms" }}>
-        <div>
-          <div className="aap-head-line">
-            <h1>Approvals</h1>
-            <span className="aap-notify">Queue Alerts <b>{notif}</b></span>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_0%_0%,rgba(15,118,110,0.08),transparent_38%),radial-gradient(circle_at_100%_0%,rgba(245,158,11,0.10),transparent_32%),linear-gradient(180deg,#f8fafc_0%,#ffffff_35%,#f8fafc_100%)] p-4 text-slate-900 sm:p-6">
+      <section className="mx-auto w-full max-w-7xl space-y-6">
+        <header className="rounded-3xl border border-white/70 bg-white/80 px-5 py-5 shadow-[0_16px_52px_rgba(15,23,42,0.08)] backdrop-blur sm:px-7">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-semibold tracking-tight">Approvals</h1>
+                <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200">
+                  Queue Alerts {stats.pending}
+                </span>
+              </div>
+              <p className="mt-2 text-sm text-slate-600">Pending certificate uploads loaded from the Spring backend snapshot.</p>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-slate-500">
+              <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+              <span>{formatSyncTime(syncedAt)}</span>
+              <button
+                type="button"
+                onClick={() => dispatch(fetchApprovalsSnapshot())}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 font-semibold text-slate-700 transition hover:border-teal-300 hover:text-teal-700"
+              >
+                Refresh Snapshot
+              </button>
+            </div>
           </div>
-          <p>Review and manage pending achievement submissions.</p>
-        </div>
-        <button type="button" className="aap-btn aap-btn-primary" onClick={() => setFiltersOpen(true)}>
-          Filter Panel
-        </button>
-      </section>
+        </header>
 
-      {loading ? (
-        <section className="aap-skeleton">
-          <div className="aap-skel-stats">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="aap-skel-card" />)}</div>
-          <div className="aap-skel-main">
-            <div className="aap-skel-table">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="aap-skel-row" />)}</div>
-            <div className="aap-skel-side">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="aap-skel-row small" />)}</div>
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard label="Total Pending" value={stats.pending} helper="Awaiting admin action" accent="text-amber-600" />
+          <StatCard label="Approved Today" value={stats.approvedToday} helper="Processed as approved" accent="text-emerald-600" />
+          <StatCard label="Rejected Today" value={stats.rejectedToday} helper="Processed as rejected" accent="text-rose-600" />
+          <StatCard
+            label="Avg Approval Time"
+            value={`${stats.avgApprovalTimeMinutes}m`}
+            helper="Average for today's decisions"
+            accent="text-teal-700"
+          />
+        </section>
+
+        <section className="rounded-3xl border border-slate-200/80 bg-white/90 p-5 shadow-[0_18px_42px_rgba(15,23,42,0.06)] sm:p-6">
+          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">Approval Queue</h2>
+              <p className="text-sm text-slate-500">Showing {startIndex}-{endIndex} of {total} pending submissions</p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                value={filters.search}
+                onChange={(event) => dispatch(setApprovalsFilters({ search: event.target.value, page: 1 }))}
+                placeholder="Search by student, title, category"
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-teal-400 focus:ring-4 focus:ring-teal-100 sm:w-72"
+              />
+              <select
+                value={filters.category}
+                onChange={(event) => dispatch(setApprovalsFilters({ category: event.target.value, page: 1 }))}
+                className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-teal-400 focus:ring-4 focus:ring-teal-100"
+              >
+                {categoryOptions.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded-2xl border border-slate-200/80">
+            <table className="min-w-full divide-y divide-slate-200 text-sm">
+              <thead className="bg-slate-50">
+                <tr className="text-left text-xs uppercase tracking-[0.14em] text-slate-500">
+                  <th className="px-4 py-3">Student Name</th>
+                  <th className="px-4 py-3">Achievement Title</th>
+                  <th className="px-4 py-3">Category</th>
+                  <th className="px-4 py-3">Submission Date</th>
+                  <th className="px-4 py-3">Certificate Attached</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white">
+                {loading ? (
+                  Array.from({ length: pageSize }).map((_, index) => (
+                    <tr key={`sk-${index}`}>
+                      <td colSpan={7} className="px-4 py-4">
+                        <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
+                      </td>
+                    </tr>
+                  ))
+                ) : items.length ? (
+                  items.map((row) => (
+                    <tr
+                      key={row.id}
+                      className={`transition ${newlyAddedIds.includes(row.id) ? "bg-emerald-50/70" : "hover:bg-slate-50"}`}
+                    >
+                      <td className="px-4 py-3 font-medium text-slate-800">{row.studentName}</td>
+                      <td className="px-4 py-3 text-slate-700">{row.achievementTitle}</td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
+                          {row.category}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">{formatDateTime(row.submissionDate)}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${row.hasCertificate ? "bg-emerald-100 text-emerald-800 ring-emerald-200" : "bg-slate-100 text-slate-700 ring-slate-200"}`}>
+                          {row.hasCertificate ? "Yes" : "No"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200">
+                          Pending
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewRow(row)}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:-translate-y-0.5 hover:border-teal-300 hover:text-teal-700"
+                            aria-label={`View ${row.achievementTitle}`}
+                            title="Quick view"
+                          >
+                            <EyeIcon />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onStatusUpdate(row.id, "approved")}
+                            disabled={busyId === row.id}
+                            className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRejectModal(row);
+                              setRejectRemarks("");
+                            }}
+                            disabled={busyId === row.id}
+                            className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
+                      No pending submissions match the current filters.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-3 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              {error ? (
+                <span className="text-rose-600">{error}</span>
+              ) : (
+                "Snapshot loaded from the Spring backend. Refresh after new student uploads."
+              )}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => dispatch(setApprovalsFilters({ page: Math.max(1, page - 1) }))}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-medium transition hover:border-teal-300 hover:text-teal-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <span>Page {page} / {totalPages}</span>
+              <button
+                type="button"
+                disabled={page >= totalPages}
+                onClick={() => dispatch(setApprovalsFilters({ page: Math.min(totalPages, page + 1) }))}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-medium transition hover:border-teal-300 hover:text-teal-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </section>
-      ) : (
-        <>
-          <section className="aap-stats aap-reveal" style={{ "--aap-delay": "70ms" }}>
-            <article className="aap-stat pending"><p>Total Pending</p><h3><CountUp value={stats.pending} /></h3><span>Needs moderation</span></article>
-            <article className="aap-stat approved"><p>Approved Today</p><h3><CountUp value={stats.approvedToday} /></h3><span>Completed actions</span></article>
-            <article className="aap-stat rejected"><p>Rejected Today</p><h3><CountUp value={stats.rejectedToday} /></h3><span>With remarks</span></article>
-            <article className="aap-stat"><p>Average Approval Time</p><h3><CountUp value={Math.round(stats.avgHours * 10)} suffix="m" /></h3><span>{stats.avgHours}h average SLA</span></article>
-          </section>
+      </section>
 
-          <section className="aap-layout aap-reveal" style={{ "--aap-delay": "120ms" }}>
-            <div className="aap-main-card">
-              <div className="aap-main-head">
-                <div>
-                  <h2>Approval Queue</h2>
-                  <p>{filtered.length} submissions in current filter set</p>
-                </div>
-                <div className="aap-efficiency">
-                  <span>Approval Progress</span>
-                  <div className="aap-progress">
-                    <div className="aap-progress-fill" style={{ width: `${progress}%` }} />
-                  </div>
-                  <strong>{progress}%</strong>
-                </div>
-              </div>
-
-              {selected.length > 0 ? (
-                <div className="aap-bulkbar">
-                  <span>{selected.length} selected</span>
-                  <div>
-                    <button type="button" className="aap-btn aap-btn-soft" onClick={() => runBulk("Bulk Approve")}>Bulk Approve</button>
-                    <button type="button" className="aap-btn aap-btn-danger-soft" onClick={() => runBulk("Bulk Reject")}>Bulk Reject</button>
-                    <button type="button" className="aap-btn aap-btn-soft" onClick={() => runBulk("Export Selected")}>Export Selected</button>
-                    <button type="button" className="aap-btn aap-btn-ghost" onClick={() => setSelected([])}>Clear</button>
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="aap-table-wrap">
-                <table className="aap-table">
-                  <thead>
-                    <tr>
-                      <th className="chk"><input type="checkbox" checked={allVisibleSelected} onChange={toggleVisible} /></th>
-                      <th>Student Name</th>
-                      <th>Achievement Title</th>
-                      <th>Category</th>
-                      <th>Submission Date</th>
-                      <th>Attached Certificate</th>
-                      <th>Status</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visible.length ? visible.map((row) => (
-                      <tr key={row.id}>
-                        <td className="chk"><input type="checkbox" checked={selected.includes(row.id)} onChange={() => toggleOne(row.id)} /></td>
-                        <td>
-                          <div className="aap-cell-grid">
-                            <strong>{row.student}</strong>
-                            <span>{row.studentId} • {row.department}</span>
-                          </div>
-                        </td>
-                        <td>
-                          <div className="aap-cell-grid">
-                            <strong>{row.title}</strong>
-                            <span>{row.id} • {row.submissionType}</span>
-                          </div>
-                        </td>
-                        <td><span className={`aap-pill ${row.category.toLowerCase()}`}>{row.category}</span></td>
-                        <td>{fmtDateTime(row.submittedAt)}</td>
-                        <td><span className={`aap-cert ${row.hasCertificate ? "yes" : "no"}`}>{row.hasCertificate ? "Yes" : "No"}</span></td>
-                        <td><span className={`aap-status ${row.status.toLowerCase()}`}>{row.status}</span></td>
-                        <td>
-                          <div className="aap-actions">
-                            <button type="button" className="aap-mini" onClick={() => openReview(row)}>Review</button>
-                            <button type="button" className="aap-mini ok" onClick={() => updateStatus(row.id, "Approved")}>Approve</button>
-                            <button type="button" className="aap-mini danger" onClick={() => updateStatus(row.id, "Rejected")}>Reject</button>
-                            <button type="button" className="aap-link" onClick={() => setToast({ type: "ok", title: "Student Profile", text: `Opened ${row.student}'s profile.` })}>Student Profile</button>
-                          </div>
-                        </td>
-                      </tr>
-                    )) : (
-                      <tr><td colSpan={8}><div className="aap-empty">No submissions match the current filters.</div></td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              <footer className="aap-pager">
-                <div>Showing {filtered.length ? (current - 1) * pageSize + 1 : 0}-{Math.min(current * pageSize, filtered.length)} of {filtered.length}</div>
-                <div className="aap-pager-right">
-                  <button type="button" className="aap-btn aap-btn-ghost" disabled={current === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</button>
-                  <span>Page {current} / {totalPages}</span>
-                  <button type="button" className="aap-btn aap-btn-ghost" disabled={current === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</button>
-                </div>
-              </footer>
-            </div>
-
-            <aside className="aap-side">
-              <section className="aap-side-card">
-                <header>
-                  <h3>Approval Timeline History</h3>
-                  <p>Latest workflow events</p>
-                </header>
-                <ul className="aap-timeline">
-                  {timeline.map((item, i) => (
-                    <li key={`${item}-${i}`}>
-                      <span className="dot" />
-                      <p>{item}</p>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-              <section className="aap-side-card">
-                <header>
-                  <h3>Admin Efficiency Metrics</h3>
-                  <p>Current shift performance</p>
-                </header>
-                <ul className="aap-metrics">
-                  <li><span>Avg review completion</span><strong>06m 24s</strong></li>
-                  <li><span>Queue auto-refresh</span><strong>Every 22s</strong></li>
-                  <li><span>Approvals handled today</span><strong>19</strong></li>
-                  <li><span>Requests changes issued</span><strong>6</strong></li>
-                </ul>
-              </section>
-            </aside>
-          </section>
-        </>
-      )}
-
-      <aside className={`aap-filter-drawer ${filtersOpen ? "open" : ""}`} aria-hidden={!filtersOpen}>
-        <div className="aap-overlay" onClick={() => setFiltersOpen(false)} />
-        <div className="aap-filter-panel" role="dialog" aria-label="Approval filters">
-          <div className="aap-drawer-head">
-            <div><p>Filters</p><h3>Refine approval queue</h3></div>
-            <button type="button" className="aap-mini" onClick={() => setFiltersOpen(false)}>Close</button>
-          </div>
-          <div className="aap-filter-fields">
-            <label><span>Date Range</span><select value={filters.dateRange} onChange={(e) => setF("dateRange", e.target.value)}>{DATE_RANGES.map((v) => <option key={v}>{v}</option>)}</select></label>
-            <label><span>Category</span><select value={filters.category} onChange={(e) => setF("category", e.target.value)}><option value="All">All</option>{CATS.map((v) => <option key={v}>{v}</option>)}</select></label>
-            <label><span>Department</span><select value={filters.department} onChange={(e) => setF("department", e.target.value)}><option value="All">All</option>{DEPTS.map((v) => <option key={v}>{v}</option>)}</select></label>
-            <label><span>Submission Type</span><select value={filters.submissionType} onChange={(e) => setF("submissionType", e.target.value)}><option value="All">All</option>{TYPES.map((v) => <option key={v}>{v}</option>)}</select></label>
-            <label><span>Status</span><select value={filters.status} onChange={(e) => setF("status", e.target.value)}><option value="All">All</option>{STATUSES.map((v) => <option key={v}>{v}</option>)}</select></label>
-          </div>
-          <div className="aap-drawer-actions">
-            <button type="button" className="aap-btn aap-btn-ghost" onClick={() => setFilters({ dateRange: "Last 7 Days", category: "All", department: "All", submissionType: "All", status: "Pending" })}>Reset</button>
-            <button type="button" className="aap-btn aap-btn-primary" onClick={() => setFiltersOpen(false)}>Apply Filters</button>
-          </div>
-        </div>
-      </aside>
-
-      <aside className={`aap-review ${reviewItem ? "open" : ""}`} aria-hidden={!reviewItem}>
-        <div className="aap-overlay" onClick={() => setReviewItem(null)} />
-        {reviewItem ? (
-          <div className="aap-review-panel" role="dialog" aria-label="Review submission">
-            <div className="aap-drawer-head">
-              <div><p>Review Submission</p><h3>{reviewItem.id}</h3></div>
-              <button type="button" className="aap-mini" onClick={() => setReviewItem(null)}>Close</button>
-            </div>
-            <div className="aap-review-body">
-              <section className="aap-review-left">
-                <div className="aap-detail-card">
-                  <h4>{reviewItem.title}</h4>
-                  <p>{reviewItem.description}</p>
-                  <div className="aap-badges">
-                    <span className={`aap-pill ${reviewItem.category.toLowerCase()}`}>{reviewItem.category}</span>
-                    <span className="aap-pill level">{reviewItem.level}</span>
-                    <span className="aap-pill type">{reviewItem.submissionType}</span>
-                  </div>
-                </div>
-                <div className="aap-detail-grid">
-                  <div><span>Event</span><strong>{reviewItem.eventName}</strong></div>
-                  <div><span>Event Date</span><strong>{fmtDate(reviewItem.eventDate)}</strong></div>
-                  <div><span>Submission Date</span><strong>{fmtDateTime(reviewItem.submittedAt)}</strong></div>
-                  <div><span>Status</span><strong className={`st-${reviewItem.status.toLowerCase()}`}>{reviewItem.status}</strong></div>
-                </div>
-                <section className="aap-review-history">
-                  <h4>Approval Timeline</h4>
-                  <ul>
-                    <li>Submission received and queued</li>
-                    <li>Auto validation completed</li>
-                    <li>Awaiting admin review</li>
-                  </ul>
-                </section>
-              </section>
-
-              <section className="aap-review-right">
-                <div className="aap-cert-preview">
-                  <div className="aap-cert-head">
-                    <strong>Certificate Preview</strong>
-                    <span>{reviewItem.hasCertificate ? reviewItem.certificateFile : "No attachment"}</span>
-                  </div>
-                  {reviewItem.hasCertificate ? (
-                    <div className="aap-cert-canvas">
-                      <div className="doc">
-                        <b>{reviewItem.certificateFile.split(".").pop()?.toUpperCase()}</b>
-                        <p>{reviewItem.title}</p>
-                        <small>{reviewItem.student}</small>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="aap-no-cert">No certificate uploaded for this submission.</div>
-                  )}
-                </div>
-                <div className="aap-student-card">
-                  <h4>Student Details</h4>
-                  <div><span>Name</span><strong>{reviewItem.student}</strong></div>
-                  <div><span>Student ID</span><strong>{reviewItem.studentId}</strong></div>
-                  <div><span>Department</span><strong>{reviewItem.department}</strong></div>
-                  <div><span>Submission Timestamp</span><strong>{fmtDateTime(reviewItem.submittedAt)}</strong></div>
-                </div>
-                <label className="aap-remarks">
-                  <span>Admin Remarks</span>
-                  <textarea rows={4} value={reviewRemarks} onChange={(e) => setReviewRemarks(e.target.value)} placeholder="Add approval/rejection notes..." />
-                </label>
-              </section>
-            </div>
-            <div className="aap-review-actions">
-              <button type="button" className="aap-btn aap-btn-indigo-outline" onClick={() => { updateStatus(reviewItem.id, "Pending", reviewRemarks || "Requested changes"); setToast({ type: "ok", title: "Request sent", text: `${reviewItem.id} marked for changes.` }); setReviewItem(null); }}>
-                Request Changes
+      {rejectModal ? (
+        <div className="fixed inset-0 z-50 grid place-items-center px-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-slate-950/55 backdrop-blur-sm"
+            onClick={() => {
+              if (busyId === rejectModal.id) return;
+              setRejectModal(null);
+              setRejectRemarks("");
+            }}
+            aria-label="Close rejection modal"
+          />
+          <div className="relative z-10 w-full max-w-lg rounded-[1.75rem] border border-white/70 bg-white p-5 shadow-[0_24px_80px_rgba(15,23,42,0.22)]">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-rose-600">Reject Certificate</p>
+            <h3 className="mt-2 text-lg font-semibold tracking-[-0.03em] text-slate-900">{rejectModal.achievementTitle}</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Add optional remarks or feedback for {rejectModal.studentName}. This note will be stored with the rejection.
+            </p>
+            <label className="mt-4 grid gap-2 text-sm font-medium text-slate-700">
+              Feedback / Remarks
+              <textarea
+                value={rejectRemarks}
+                onChange={(event) => setRejectRemarks(event.target.value)}
+                rows={5}
+                placeholder="Explain why the certificate was rejected or what should be fixed."
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
+              />
+            </label>
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (busyId === rejectModal.id) return;
+                  setRejectModal(null);
+                  setRejectRemarks("");
+                }}
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700"
+              >
+                Cancel
               </button>
-              <div className="aap-right-actions">
-                <button type="button" className="aap-btn aap-btn-danger" onClick={() => { updateStatus(reviewItem.id, "Rejected", reviewRemarks); setReviewItem(null); }}>
-                  Reject
-                </button>
-                <button type="button" className="aap-btn aap-btn-emerald" onClick={() => { updateStatus(reviewItem.id, "Approved", reviewRemarks); setReviewItem(null); }}>
-                  Approve
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
-      </aside>
-
-      {bulkConfirm.open ? (
-        <div className="aap-modal-layer" role="dialog" aria-modal="true" aria-label="Confirm bulk action">
-          <div className="aap-overlay" onClick={() => !bulkLoading && setBulkConfirm({ open: false, action: "" })} />
-          <div className="aap-confirm">
-            <div className="aap-confirm-icon">{bulkConfirm.action.includes("Reject") ? "!" : "✓"}</div>
-            <h3>{bulkConfirm.action}</h3>
-            <p>{bulkConfirm.action} for {selected.length} selected submissions?</p>
-            <div className="aap-confirm-actions">
-              <button type="button" className="aap-btn aap-btn-ghost" disabled={bulkLoading} onClick={() => setBulkConfirm({ open: false, action: "" })}>Cancel</button>
-              <button type="button" className="aap-btn aap-btn-primary" disabled={bulkLoading} onClick={confirmBulkAction}>
-                {bulkLoading ? <span className="aap-spin" /> : null}
-                {bulkLoading ? "Processing..." : "Confirm"}
+              <button
+                type="button"
+                onClick={() => onStatusUpdate(rejectModal.id, "rejected", rejectRemarks)}
+                disabled={busyId === rejectModal.id}
+                className="rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white shadow-[0_16px_34px_rgba(239,68,68,0.22)] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {busyId === rejectModal.id ? "Rejecting..." : "Reject Certificate"}
               </button>
             </div>
           </div>
         </div>
       ) : null}
 
-      {toast ? (
-        <div className={`aap-toast ${toast.type === "danger" ? "danger" : ""}`} role="status" aria-live="polite">
-          <strong>{toast.title}</strong>
-          <span>{toast.text}</span>
+      {previewRow ? (
+        <div className="fixed inset-0 z-50 grid place-items-center px-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-slate-950/55 backdrop-blur-sm"
+            onClick={() => setPreviewRow(null)}
+            aria-label="Close certificate preview"
+          />
+          <div className="relative z-10 grid w-full max-w-5xl gap-0 overflow-hidden rounded-[2rem] border border-white/70 bg-white shadow-[0_30px_100px_rgba(15,23,42,0.22)] lg:grid-cols-[minmax(0,1.25fr)_360px]">
+            <div className="border-b border-slate-200/80 bg-slate-50 p-4 lg:border-b-0 lg:border-r">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-600">Quick View</p>
+                  <h3 className="mt-2 text-lg font-semibold tracking-[-0.03em] text-slate-900">{previewRow.achievementTitle}</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPreviewRow(null)}
+                  className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700"
+                >
+                  Close
+                </button>
+              </div>
+              <div className="mt-4 overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white">
+                {previewRow.fileUrl ? (
+                  resolvePreviewKind(previewRow) === "image" ? (
+                    <img src={previewRow.fileUrl} alt={previewRow.achievementTitle} className="max-h-[70vh] w-full object-contain" />
+                  ) : (
+                    <iframe src={previewRow.fileUrl} title={`${previewRow.achievementTitle} preview`} className="h-[72vh] w-full border-0" />
+                  )
+                ) : (
+                  <div className="flex h-[72vh] items-center justify-center bg-gradient-to-br from-teal-50 to-amber-50 p-6 text-center text-slate-600">
+                    <div>
+                      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+                        <EyeIcon />
+                      </div>
+                      <p className="mt-4 text-sm font-semibold text-slate-900">Preview unavailable</p>
+                      <p className="mt-2 max-w-sm text-xs leading-5 text-slate-500">
+                        The current Spring backend stores certificate metadata for approvals, but it does not persist the uploaded file itself yet.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <aside className="grid gap-5 p-5">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-600">Submission Details</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200">
+                    Pending
+                  </span>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">{previewRow.category}</span>
+                </div>
+              </div>
+
+              <div className="rounded-[1.5rem] bg-slate-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Student</p>
+                <h4 className="mt-2 text-base font-semibold text-slate-900">{previewRow.studentName}</h4>
+                <p className="mt-1 text-sm text-slate-600">Submitted {formatDateTime(previewRow.submissionDate)}</p>
+              </div>
+
+              <div className="rounded-[1.5rem] bg-slate-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Reviewer Notes</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  {previewRow.raw?.remarks || "No remarks added yet."}
+                </p>
+              </div>
+
+              <div className="grid gap-3">
+                <button
+                  type="button"
+                  onClick={() => onStatusUpdate(previewRow.id, "approved")}
+                  disabled={busyId === previewRow.id}
+                  className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-[0_16px_34px_rgba(5,150,105,0.22)] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {busyId === previewRow.id ? "Updating..." : "Approve Quickly"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRejectModal(previewRow);
+                    setRejectRemarks("");
+                  }}
+                  disabled={busyId === previewRow.id}
+                  className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Add Feedback & Reject
+                </button>
+              </div>
+            </aside>
+          </div>
         </div>
       ) : null}
     </div>
   );
+}
+
+function EyeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z" />
+      <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+    </svg>
+  );
+}
+
+function resolvePreviewKind(row) {
+  const text = String(row?.raw?.type || row?.raw?.previewKind || "").toLowerCase();
+  if (text.includes("image")) return "image";
+  return "pdf";
 }

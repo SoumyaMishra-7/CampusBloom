@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiGet, apiPost } from "./api";
+import { getAuthTokenForRole } from "./services/authSession.js";
+import { DOCUMENT_VAULT_BASE_URL } from "./services/documentVaultConfig.js";
 
 const navItems = [
   { label: "Dashboard", view: "dashboard", href: "/student-dashboard" },
@@ -126,6 +128,33 @@ function formatDisplayDate(date) {
   return new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+function normalizeCertificateStatus(value) {
+  const status = String(value || "").toLowerCase();
+  if (status === "verified" || status === "approved") return "Approved";
+  if (status === "rejected") return "Rejected";
+  return "Pending";
+}
+
+function mapApprovedCertificateToAchievement(certificate) {
+  return {
+    id: `certificate-${certificate.id}`,
+    title: certificate.title || "Approved Certificate",
+    category: certificate.category || "Technical",
+    level: "Certificate",
+    date: certificate.uploadedAt || certificate.updatedAt || new Date().toISOString(),
+    status: "Approved",
+    skills: ["Certificate", certificate.type || "Document"].filter(Boolean),
+    description: certificate.remarks || "Approved certificate available for portfolio showcase.",
+    featured: false,
+    verified: true,
+    fileUrl: certificate.fileUrl || certificate.previewUrl || "",
+    previewUrl: certificate.previewUrl || certificate.fileUrl || "",
+    fileType: certificate.type || "",
+    previewKind: certificate.previewKind || "",
+    source: "certificate"
+  };
+}
+
 function StudentDashboard({ initialView = "dashboard" }) {
   const initialNavLabel =
     navItems.find((item) => item.view === initialView)?.label ||
@@ -139,6 +168,7 @@ function StudentDashboard({ initialView = "dashboard" }) {
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem(storageKeys.darkMode) === "true");
   const [loading, setLoading] = useState(true);
   const [dashboard, setDashboard] = useState(null);
+  const [certificates, setCertificates] = useState([]);
   const [favoriteTitles, setFavoriteTitles] = useState(() => {
     try {
       const raw = localStorage.getItem(storageKeys.favorites);
@@ -153,24 +183,69 @@ function StudentDashboard({ initialView = "dashboard" }) {
   const achievementsSectionRef = useRef(null);
   const timelineSectionRef = useRef(null);
 
+  const fetchDashboard = useCallback(async () => {
+    try {
+      const [dashboardData, certificatesData] = await Promise.all([
+        apiGet("/api/student/dashboard"),
+        apiGet("/api/student/certificates")
+      ]);
+      setDashboard(dashboardData);
+      setCertificates(Array.isArray(certificatesData) ? certificatesData : []);
+      setToast("");
+    } catch (error) {
+      setToast(error.message);
+    }
+  }, []);
+
   useEffect(() => {
     let mounted = true;
-    apiGet("/api/student/dashboard")
-      .then((data) => {
-        if (!mounted) return;
-        setDashboard(data);
-      })
-      .catch((error) => {
-        if (!mounted) return;
-        setToast(error.message);
-      })
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
+    fetchDashboard().finally(() => {
+      if (mounted) setLoading(false);
+    });
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [fetchDashboard]);
+
+  useEffect(() => {
+    const socketUrl = DOCUMENT_VAULT_BASE_URL;
+    const token = getAuthTokenForRole("student");
+
+    let active = true;
+    let socketInstance = null;
+
+    import("socket.io-client")
+      .then(({ io }) => {
+        if (!active) return;
+        const socket = io(socketUrl, {
+          transports: ["websocket"],
+          autoConnect: true,
+          auth: token ? { token } : undefined,
+          extraHeaders: token ? { Authorization: `Bearer ${token}` } : undefined
+        });
+        socketInstance = socket;
+
+        const syncDashboard = () => {
+          fetchDashboard();
+        };
+
+        socket.on("certificate_created", syncDashboard);
+        socket.on("certificate_updated", syncDashboard);
+        socket.on("certificate_deleted", syncDashboard);
+        socket.on("certificate_status_changed", syncDashboard);
+      })
+      .catch(() => {
+        // Realtime listener is optional; dashboard still works with API fetch.
+      });
+
+    return () => {
+      active = false;
+      if (socketInstance) {
+        socketInstance.removeAllListeners();
+        socketInstance.disconnect();
+      }
+    };
+  }, [fetchDashboard]);
 
   useEffect(() => {
     localStorage.setItem(storageKeys.sidebarCollapsed, String(sidebarCollapsed));
@@ -232,7 +307,16 @@ function StudentDashboard({ initialView = "dashboard" }) {
     return () => io.disconnect();
   }, [loading, dashboard]);
 
-  const achievements = dashboard?.achievements || [];
+  const achievements = useMemo(() => {
+    const dashboardAchievements = dashboard?.achievements || [];
+    const approvedCertificates = certificates
+      .filter((certificate) => normalizeCertificateStatus(certificate.status) === "Approved")
+      .map(mapApprovedCertificateToAchievement)
+      .filter((certificateAchievement) =>
+        !dashboardAchievements.some((achievement) => achievement.title === certificateAchievement.title)
+      );
+    return [...approvedCertificates, ...dashboardAchievements];
+  }, [certificates, dashboard?.achievements]);
   const stats = dashboard?.stats || [];
   const timelineItems = dashboard?.timeline || [];
   const notifications = dashboard?.notifications || [];
@@ -666,24 +750,40 @@ function StudentDashboard({ initialView = "dashboard" }) {
             </div>
 
             <div className="certificate-preview">
-              <div className="certificate-sheet">
-                <p className="certificate-brand">CampusBloom Verified Record</p>
-                <h4>{selectedAchievement.title}</h4>
-                <p className="certificate-meta">
-                  Category: <strong>{selectedAchievement.category}</strong>
-                </p>
-                <p className="certificate-meta">
-                  Level: <strong>{selectedAchievement.level}</strong>
-                </p>
-                <p className="certificate-meta">
-                  Status: <strong>{selectedAchievement.status}</strong>
-                </p>
-                <div className="certificate-skills">
-                  {selectedAchievement.skills.map((skill) => (
-                    <span key={skill}>{skill}</span>
-                  ))}
+              {(selectedAchievement.previewUrl || selectedAchievement.fileUrl) ? (
+                String(selectedAchievement.fileType || selectedAchievement.previewKind || "").toLowerCase().includes("image") ? (
+                  <img
+                    src={selectedAchievement.previewUrl || selectedAchievement.fileUrl}
+                    alt={selectedAchievement.title}
+                    className="max-h-[70vh] w-full rounded-[1.5rem] object-contain bg-white"
+                  />
+                ) : (
+                  <iframe
+                    src={selectedAchievement.previewUrl || selectedAchievement.fileUrl}
+                    title={selectedAchievement.title}
+                    className="h-[70vh] w-full rounded-[1.5rem] border-0 bg-white"
+                  />
+                )
+              ) : (
+                <div className="certificate-sheet">
+                  <p className="certificate-brand">CampusBloom Verified Record</p>
+                  <h4>{selectedAchievement.title}</h4>
+                  <p className="certificate-meta">
+                    Category: <strong>{selectedAchievement.category}</strong>
+                  </p>
+                  <p className="certificate-meta">
+                    Level: <strong>{selectedAchievement.level}</strong>
+                  </p>
+                  <p className="certificate-meta">
+                    Status: <strong>{selectedAchievement.status}</strong>
+                  </p>
+                  <div className="certificate-skills">
+                    {selectedAchievement.skills.map((skill) => (
+                      <span key={skill}>{skill}</span>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

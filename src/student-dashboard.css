@@ -66,10 +66,13 @@ a {
 
 .sd-app.sd-dark {
   --sd-bg: #0f172a;
-  --sd-text: #e5e7eb;
+  --sd-text: #cbd5e1;
+  --sd-heading: #f8fafc;
+  --sd-body: #cbd5e1;
   --sd-muted: #94a3b8;
-  --sd-border: rgba(148, 163, 184, 0.18);
-  --sd-card: rgba(30, 41, 59, 0.92);
+  --sd-border: #334155;
+  --sd-card: #1e293b;
+  --sd-surface-2: #2d3748;
   --sd-shadow: 0 16px 34px rgba(2, 6, 23, 0.35);
   --sd-shadow-soft: 0 8px 24px rgba(2, 6, 23, 0.28);
   background:
@@ -212,6 +215,13 @@ a {
   box-shadow: 0 10px 24px rgba(79, 70, 229, 0.3);
 }
 
+.sd-dark .sd-nav-item.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  box-shadow: 0 12px 28px rgba(79, 70, 229, 0.4);
+  outline: 1px solid rgba(199, 210, 254, 0.28);
+}
+
 .sd-nav-dot {
   width: 8px;
   height: 8px;
@@ -325,7 +335,9 @@ a {
 }
 
 .sd-dark .sd-search-wrap {
-  background: rgba(30, 41, 59, 0.92);
+  background: #1e293b;
+  border-color: #475569;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .sd-search-wrap:focus-within {
@@ -338,6 +350,10 @@ a {
   height: 18px;
   color: #64748b;
   flex: 0 0 auto;
+}
+
+.sd-dark .sd-search-wrap svg {
+  color: #94a3b8;
 }
 
 .sd-search-wrap input {
@@ -359,9 +375,14 @@ a {
 }
 
 .sd-dark .icon-btn {
-  background: rgba(30, 41, 59, 0.92);
-  border-color: rgba(148, 163, 184, 0.16);
-  color: #cbd5e1;
+  background: #1e293b;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+.sd-dark .icon-btn:hover {
+  background: #2d3748;
+  border-color: #475569;
 }
 
 .notify-btn {
@@ -409,7 +430,13 @@ a {
 }
 
 .sd-dark .profile-chip {
-  background: rgba(30, 41, 59, 0.92);
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.sd-dark .profile-chip:hover {
+  background: #2d3748;
+  border-color: #475569;
 }
 
 .profile-meta {
@@ -465,8 +492,8 @@ a {
 }
 
 .sd-dark .sd-hero-head {
-  background: rgba(30, 41, 59, 0.9);
-  border-color: rgba(148, 163, 184, 0.15);
+  background: #1e293b;
+  border-color: #334155;
 }
 
 .sd-eyebrow {
@@ -487,10 +514,18 @@ a {
   max-width: 28ch;
 }
 
+.sd-dark .sd-hero-head h1 {
+  color: var(--sd-heading);
+}
+
 .sd-muted {
   margin: 0.7rem 0 0;
   color: var(--sd-muted);
   line-height: 1.55;
+}
+
+.sd-dark .sd-muted {
+  color: var(--sd-body);
 }
 
 .primary-btn,
@@ -514,6 +549,17 @@ a {
   box-shadow: 0 16px 28px rgba(79, 70, 229, 0.26);
 }
 
+.sd-dark .primary-btn {
+  color: #ffffff;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  box-shadow: 0 14px 28px rgba(79, 70, 229, 0.34);
+}
+
+.sd-dark .primary-btn:hover {
+  background: linear-gradient(135deg, #7c3aed, #6366f1);
+  box-shadow: 0 18px 34px rgba(79, 70, 229, 0.42);
+}
+
 .secondary-btn {
   width: 100%;
   background: rgba(79, 70, 229, 0.06);
@@ -525,6 +571,18 @@ a {
   transform: translateY(-2px);
   background: rgba(79, 70, 229, 0.1);
   border-color: rgba(79, 70, 229, 0.2);
+}
+
+.sd-dark .secondary-btn {
+  background: #2d3748;
+  color: #f8fafc;
+  border-color: #475569;
+}
+
+.sd-dark .secondary-btn:hover {
+  background: #3c4b61;
+  border-color: #64748b;
+  box-shadow: 0 10px 22px rgba(2, 6, 23, 0.24);
 }
 
 .stats-grid {
@@ -582,6 +640,37 @@ a {
   letter-spacing: -0.03em;
 }
 
+.sd-dark .metric-card,
+.sd-dark .panel,
+.sd-dark .glass-panel,
+.sd-dark .score-ring-card,
+.sd-dark .quick-btn,
+.sd-dark .notifications-popover,
+.sd-dark .modal-card {
+  background: var(--sd-card);
+  border-color: var(--sd-border);
+}
+
+.sd-dark .metric-card h2,
+.sd-dark .panel-head h3,
+.sd-dark .modal-head h3,
+.sd-dark .notification-item strong,
+.sd-dark .certificate-sheet h4,
+.sd-dark .score-ring-inner span,
+.sd-dark .profile-meta strong {
+  color: var(--sd-heading);
+}
+
+.sd-dark .metric-card p,
+.sd-dark .panel-head p,
+.sd-dark .score-ring-card p,
+.sd-dark .timeline-content p,
+.sd-dark .notification-item p,
+.sd-dark .certificate-meta,
+.sd-dark .profile-meta small {
+  color: var(--sd-body);
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
@@ -611,13 +700,13 @@ a {
 }
 
 .sd-dark .panel {
-  background: rgba(30, 41, 59, 0.9);
-  border-color: rgba(148, 163, 184, 0.15);
+  background: var(--sd-card);
+  border-color: var(--sd-border);
 }
 
 .sd-dark .glass-panel {
-  background: rgba(30, 41, 59, 0.66);
-  border-color: rgba(148, 163, 184, 0.18);
+  background: color-mix(in srgb, var(--sd-card) 88%, #0f172a 12%);
+  border-color: var(--sd-border);
 }
 
 .panel-head {
@@ -716,7 +805,8 @@ a {
 }
 
 .sd-dark .score-ring-card {
-  background: rgba(15, 23, 42, 0.4);
+  background: var(--sd-card);
+  border-color: var(--sd-border);
 }
 
 .score-ring {
@@ -789,7 +879,9 @@ a {
 }
 
 .sd-dark .select-wrap select {
-  background: rgba(15, 23, 42, 0.45);
+  background: #1e293b;
+  border-color: #475569;
+  color: #f8fafc;
 }
 
 .select-wrap select:focus {
@@ -845,6 +937,23 @@ a {
   border-color: rgba(79, 70, 229, 0.2);
 }
 
+.sd-dark .toggle-chip {
+  background: #1e293b;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+.sd-dark .toggle-chip:hover {
+  background: #2d3748;
+  border-color: #475569;
+}
+
+.sd-dark .toggle-chip.active {
+  color: #ffffff;
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(129, 140, 248, 0.4);
+}
+
 .achievements-panel .achievement-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -863,7 +972,8 @@ a {
 }
 
 .sd-dark .achievement-card {
-  background: rgba(15, 23, 42, 0.42);
+  background: var(--sd-card);
+  border-color: var(--sd-border);
 }
 
 .achievement-card:hover {
@@ -892,6 +1002,10 @@ a {
   letter-spacing: -0.02em;
 }
 
+.sd-dark .achievement-card h4 {
+  color: #f8fafc;
+}
+
 .achievement-meta {
   display: flex;
   flex-wrap: wrap;
@@ -911,7 +1025,9 @@ a {
 }
 
 .sd-dark .meta-chip {
-  background: rgba(30, 41, 59, 0.7);
+  background: var(--sd-surface-2);
+  border-color: var(--sd-border);
+  color: var(--sd-muted);
 }
 
 .skill-tags {
@@ -930,7 +1046,21 @@ a {
 }
 
 .sd-dark .skill-tags span {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--sd-surface-2);
+  border-color: var(--sd-border);
+  color: var(--sd-body);
+}
+
+.sd-dark .favorite-btn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+.sd-dark .favorite-btn:hover {
+  background: #2d3748;
+  border-color: #475569;
+  color: #f8fafc;
 }
 
 .favorite-btn {
@@ -1085,7 +1215,8 @@ a {
 }
 
 .sd-dark .timeline-content {
-  background: rgba(15, 23, 42, 0.35);
+  background: var(--sd-card);
+  border-color: var(--sd-border);
 }
 
 .timeline-content h4 {
@@ -1093,11 +1224,27 @@ a {
   font-size: 0.92rem;
 }
 
+.sd-dark .timeline-content h4 {
+  color: #f8fafc;
+}
+
 .timeline-content p {
   margin: 0.35rem 0 0.55rem;
   color: var(--sd-muted);
   line-height: 1.5;
   font-size: 0.83rem;
+}
+
+.sd-dark .timeline-date,
+.sd-dark .achievement-card .category-pill,
+.sd-dark .timeline-content .category-pill {
+  color: #94a3b8;
+}
+
+.sd-dark .achievement-card .category-pill,
+.sd-dark .timeline-content .category-pill {
+  background: var(--sd-surface-2);
+  border-color: var(--sd-border);
 }
 
 .dashboard-side-col {
@@ -1124,7 +1271,14 @@ a {
 }
 
 .sd-dark .quick-btn {
-  background: rgba(15, 23, 42, 0.35);
+  background: var(--sd-card);
+  border-color: var(--sd-border);
+  color: var(--sd-heading);
+}
+
+.sd-dark .quick-btn:hover {
+  background: var(--sd-surface-2);
+  border-color: #475569;
 }
 
 .quick-btn:hover {
@@ -1169,7 +1323,9 @@ a {
 }
 
 .sd-dark .skill-cloud span {
-  background: rgba(15, 23, 42, 0.34);
+  background: var(--sd-surface-2);
+  border-color: var(--sd-border);
+  color: var(--sd-body);
 }
 
 .skill-cloud span:hover {
@@ -1229,7 +1385,8 @@ a {
 }
 
 .sd-dark .notifications-popover {
-  background: rgba(30, 41, 59, 0.96);
+  background: var(--sd-card);
+  border-color: var(--sd-border);
 }
 
 .notification-item {
@@ -1278,6 +1435,12 @@ a {
   border-color: rgba(79, 70, 229, 0.24);
   color: var(--sd-primary);
   background: rgba(79, 70, 229, 0.06);
+}
+
+.sd-dark .notify-btn.active {
+  color: #ffffff;
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(129, 140, 248, 0.4);
 }
 
 .modal-backdrop {
@@ -1347,7 +1510,8 @@ a {
   background:
     radial-gradient(circle at 12% 8%, rgba(79, 70, 229, 0.12), transparent 36%),
     radial-gradient(circle at 88% 8%, rgba(16, 185, 129, 0.1), transparent 30%),
-    rgba(15, 23, 42, 0.55);
+    #1e293b;
+  border: 1px solid #334155;
 }
 
 .certificate-brand {
@@ -1374,6 +1538,10 @@ a {
 
 .certificate-meta strong {
   color: var(--sd-text);
+}
+
+.sd-dark .certificate-meta strong {
+  color: var(--sd-heading);
 }
 
 .certificate-skills {

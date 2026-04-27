@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { apiGet, apiPost } from "../api.js";
-import { CURRENT_STUDENT, CURRENT_STUDENT_ID, initialCertificates, makeObjectPreview } from "./certificateSeed.js";
+import { apiGet, apiPatch, apiPost } from "../api.js";
+import { CURRENT_STUDENT, CURRENT_STUDENT_ID, initialCertificates } from "./certificateSeed.js";
 
 const STORAGE_KEY = "campusbloom.documentVault.certificates";
 
@@ -10,7 +10,7 @@ const capabilities = {
   canCreate: true,
   canEdit: false,
   canDelete: false,
-  canModerate: false,
+  canModerate: true,
   hasRealtimeSync: false
 };
 
@@ -106,6 +106,8 @@ function mapSpringCertificate(record) {
     status: record.status,
     achievementLink: record.achievementLink,
     previewKind: record.previewKind,
+    fileUrl: record.fileUrl,
+    previewUrl: record.fileUrl,
     studentId: CURRENT_STUDENT_ID,
     studentName: CURRENT_STUDENT.name
   });
@@ -119,20 +121,21 @@ async function fetchCertificatesFromSpring() {
 
 async function uploadCertificateToSpring(input) {
   const file = input.file instanceof File ? input.file : null;
+  if (!file) {
+    throw new Error("Certificate file is required");
+  }
+
   const formData = new FormData();
-  formData.append("fileName", (input.title || file?.name || "Uploaded certificate").trim());
-  formData.append("fileType", inferFileType(file?.type || file?.name || input.fileType) === "PDF" ? "pdf" : "image");
-  formData.append("sizeMB", file ? (file.size / (1024 * 1024)).toFixed(2) : "1.0");
+  formData.append("title", (input.title || file.name || "Uploaded certificate").trim());
+  formData.append("category", input.category?.trim() || "General");
+  formData.append("description", input.description?.trim() || "Uploaded certificate document");
+  formData.append("file", file);
 
   const response = await apiPost("/api/student/certificates/upload", formData);
   const created = mapSpringCertificate(response || {});
 
-  if (file) {
-    created.previewUrl = makeObjectPreview(file);
-    created.fileUrl = created.previewUrl;
-    created.fileName = file.name;
-    created.fileType = inferFileType(file.type || file.name);
-  }
+  created.fileName = file.name;
+  created.fileType = inferFileType(file.type || file.name);
 
   if (input.description?.trim()) {
     created.description = input.description.trim();
@@ -143,6 +146,11 @@ async function uploadCertificateToSpring(input) {
   }
 
   return normalizeCertificate(created);
+}
+
+async function updateCertificateStatusInSpring(id, status, remarks = "") {
+  const response = await apiPatch(`/api/student/certificates/${id}/status`, { status, remarks });
+  return mapSpringCertificate(response || {});
 }
 
 export function CertificatesProvider({ children }) {
@@ -220,6 +228,23 @@ export function CertificatesProvider({ children }) {
     }
   };
 
+  const updateCertificateStatus = async (id, status, remarks = "") => {
+    setBusy(id, true);
+    try {
+      const updated = normalizeCertificate(await updateCertificateStatusInSpring(id, status, remarks));
+      const next = certificates.map((certificate) => (certificate.id === id ? updated : certificate));
+      setApiError("");
+      setCertificates(next);
+      persistCertificates(next);
+      return updated;
+    } catch (error) {
+      setApiError(error.message || "Status update failed.");
+      throw error;
+    } finally {
+      setBusy(id, false);
+    }
+  };
+
   const unsupportedMutation = () => {
     throw new Error("This action is not available on the Spring backend yet.");
   };
@@ -242,7 +267,7 @@ export function CertificatesProvider({ children }) {
       createCertificate,
       updateCertificate: unsupportedMutation,
       removeCertificate: unsupportedMutation,
-      updateCertificateStatus: unsupportedMutation,
+      updateCertificateStatus,
       isBusy: (id) => busyIds.includes(id),
       capabilities
     };

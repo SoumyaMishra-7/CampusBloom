@@ -233,9 +233,21 @@ function StudentSettingsPage() {
 
   const submitDeleteRequest = async () => {
     try {
-      const response = await apiPost("/api/student/account/delete-request");
+      const response = await apiPost("/api/auth/delete-account", {
+        role: "student",
+        email: profile.email
+      });
+      try {
+        localStorage.removeItem("cb.authToken");
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("cb.admin.authToken");
+        sessionStorage.clear();
+      } catch {}
       setDeleteConfirmOpen(false);
       setToast(response.message);
+      window.setTimeout(() => {
+        window.location.href = "/login";
+      }, 800);
     } catch (error) {
       setToast(error.message);
     }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { apiPost } from "./api";
 import "./admin-settings-page.css";
 
 const TAB_ITEMS = [
@@ -63,7 +64,9 @@ export default function AdminSettingsPage({ initialTab = "profile" }) {
   const [toast, setToast] = useState(null);
   const [fadeOut, setFadeOut] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [confirmSession, setConfirmSession] = useState(null);
   const [showPwd, setShowPwd] = useState({ current: false, next: false, confirm: false });
   const [savingSection, setSavingSection] = useState("");
@@ -127,6 +130,7 @@ export default function AdminSettingsPage({ initialTab = "profile" }) {
     const onKey = (e) => {
       if (e.key === "Escape") {
         setShowLogoutConfirm(false);
+        setShowDeleteConfirm(false);
         setConfirmSession(null);
       }
     };
@@ -225,6 +229,31 @@ export default function AdminSettingsPage({ initialTab = "profile" }) {
       } catch {}
       window.location.href = "/login";
     }, 950);
+  };
+
+  const deleteAccount = async () => {
+    if (deleteLoading) return;
+    setDeleteLoading(true);
+    try {
+      const response = await apiPost("/api/auth/delete-account", {
+        role: "admin",
+        email: profile.email
+      });
+      setToast({ type: "ok", title: "Account deleted", text: response.message });
+      try {
+        localStorage.removeItem("cb.admin.session");
+        localStorage.removeItem("cb.admin.authToken");
+        localStorage.removeItem("cb.authToken");
+        localStorage.removeItem("authToken");
+        sessionStorage.clear();
+      } catch {}
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 850);
+    } catch (error) {
+      setDeleteLoading(false);
+      setToast({ type: "danger", title: "Delete failed", text: error.message });
+    }
   };
 
   return (
@@ -542,6 +571,9 @@ export default function AdminSettingsPage({ initialTab = "profile" }) {
                   <button type="button" className="asp-btn asp-btn-danger" onClick={() => setShowLogoutConfirm(true)}>
                     Logout
                   </button>
+                  <button type="button" className="asp-btn asp-btn-danger" onClick={() => setShowDeleteConfirm(true)}>
+                    Delete Account
+                  </button>
                 </div>
               </section>
             ) : null}
@@ -590,6 +622,24 @@ export default function AdminSettingsPage({ initialTab = "profile" }) {
               <button type="button" className="asp-btn asp-btn-danger" disabled={logoutLoading} onClick={doLogout}>
                 {logoutLoading ? <span className="asp-spin" /> : null}
                 {logoutLoading ? "Logging out..." : "Logout"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showDeleteConfirm ? (
+        <div className="asp-modal-layer" role="dialog" aria-modal="true" aria-label="Delete account confirmation">
+          <div className="asp-overlay" onClick={() => !deleteLoading && setShowDeleteConfirm(false)} />
+          <div className="asp-modal">
+            <div className="asp-modal-icon danger">!</div>
+            <h3>Delete admin account?</h3>
+            <p>This permanently removes the admin record from MySQL and signs you out of this browser.</p>
+            <div className="asp-modal-actions">
+              <button type="button" className="asp-btn asp-btn-ghost" disabled={deleteLoading} onClick={() => setShowDeleteConfirm(false)}>Cancel</button>
+              <button type="button" className="asp-btn asp-btn-danger" disabled={deleteLoading} onClick={deleteAccount}>
+                {deleteLoading ? <span className="asp-spin" /> : null}
+                {deleteLoading ? "Deleting..." : "Delete Account"}
               </button>
             </div>
           </div>

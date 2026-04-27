@@ -1,5 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { Provider } from "react-redux";
 import App from "./App.jsx";
 import Homepage from "./Homepage.jsx";
 import LoginPage from "./LoginPage.jsx";
@@ -9,6 +10,7 @@ import StudentPublicProfile from "./StudentPublicProfile.jsx";
 import StudentSettingsPage from "./StudentSettingsPage.jsx";
 import AdminDashboard from "./AdminDashboard.jsx";
 import { CertificatesProvider } from "./certificates/CertificatesContext.jsx";
+import store from "./store/index.js";
 import "./index.css";
 import "./homepage.css";
 import "./student-dashboard.css";
@@ -153,8 +155,10 @@ function StudentRoutes() {
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <CertificatesProvider>
-      <StudentRoutes />
-    </CertificatesProvider>
+    <Provider store={store}>
+      <CertificatesProvider>
+        <StudentRoutes />
+      </CertificatesProvider>
+    </Provider>
   </React.StrictMode>
 );
