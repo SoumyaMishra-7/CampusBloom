@@ -304,8 +304,12 @@ function LoginPage() {
       console.log("Response:", response);
 
       persistAuthTokenFromResponse(response, role);
+      const resolvedRole = String(response?.role || response?.data?.role || role).trim().toUpperCase();
+      if (resolvedRole) {
+        localStorage.setItem("role", resolvedRole);
+      }
       console.log("Token:", localStorage.getItem("token"));
-      navigate("/dashboard", { replace: true });
+      navigate(resolvedRole === "ADMIN" ? "/admin-dashboard" : "/student-dashboard", { replace: true });
     } catch (error) {
       console.error("Login error:", error);
       setLoading(false);

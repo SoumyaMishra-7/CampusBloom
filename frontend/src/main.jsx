@@ -12,7 +12,7 @@ import StudentSettingsPage from "./StudentSettingsPage.jsx";
 import AdminDashboard from "./AdminDashboard.jsx";
 import { CertificatesProvider } from "./certificates/CertificatesContext.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
-import { getAnyAuthToken, getAuthUserFromToken } from "./services/authSession.js";
+import { getAnyAuthToken, getAuthUserFromToken, getStoredAuthRole } from "./services/authSession.js";
 import store from "./store/index.js";
 import "./index.css";
 import "./homepage.css";
@@ -96,15 +96,19 @@ function RouteMetaSync() {
 function PublicOnlyRoute({ children }) {
   const token = getAnyAuthToken();
   if (token) {
-    return <Navigate to="/dashboard" replace />;
+    const storedRole = getStoredAuthRole();
+    return <Navigate to={storedRole === "ADMIN" ? "/admin-dashboard" : "/student-dashboard"} replace />;
   }
 
   return children;
 }
 
 function DashboardRedirect() {
+  const storedRole = getStoredAuthRole();
   const user = getAuthUserFromToken("");
-  if (user?.role === "admin") {
+  const role = storedRole || String(user?.role || "").toUpperCase();
+
+  if (role === "ADMIN") {
     return <Navigate to="/admin-dashboard" replace />;
   }
 

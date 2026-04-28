@@ -5,6 +5,13 @@ const TOKEN_KEYS = {
   legacy: "token"
 };
 
+function normalizeStoredRole(role) {
+  const value = String(role || "").trim().toLowerCase();
+  if (value === "admin") return "ADMIN";
+  if (value === "student") return "STUDENT";
+  return "";
+}
+
 function parseJwtPayload(token) {
   if (!token || typeof token !== "string") return null;
   const parts = token.split(".");
@@ -22,6 +29,11 @@ function parseJwtPayload(token) {
 
 function getRoleTokenKey(role) {
   return role === "admin" ? TOKEN_KEYS.admin : TOKEN_KEYS.student;
+}
+
+export function getStoredAuthRole() {
+  if (typeof window === "undefined") return "";
+  return normalizeStoredRole(window.localStorage.getItem("role"));
 }
 
 export function getAuthTokenForRole(role) {
@@ -63,9 +75,12 @@ export function getAuthUserFromToken(role) {
   const payload = parseJwtPayload(token);
   if (!payload) return null;
 
+  const storedRole = getStoredAuthRole();
+  const payloadRole = normalizeStoredRole(payload.role);
+
   return {
     id: String(payload.sub || payload.userId || payload.id || ""),
-    role: String(payload.role || role || "").toLowerCase(),
+    role: String(payloadRole || storedRole || role || "").toLowerCase(),
     name: payload.name || payload.fullName || payload.username || "",
     email: payload.email || "",
     raw: payload
@@ -102,7 +117,11 @@ function extractTokenCandidate(response) {
 export function persistAuthTokenFromResponse(response, role) {
   if (typeof window === "undefined") return "";
   const token = extractTokenCandidate(response).trim();
+  const responseRole = normalizeStoredRole(response?.role || response?.data?.role || role);
   const roleKey = getRoleTokenKey(role);
+  if (responseRole) {
+    window.localStorage.setItem("role", responseRole);
+  }
   if (token) {
     window.localStorage.setItem(roleKey, token);
     window.localStorage.setItem(TOKEN_KEYS.fallback, token);
