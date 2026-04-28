@@ -10,7 +10,7 @@ function ProtectedRoute({ children, role }) {
   }
 
   if (role) {
-    const user = getAuthUserFromToken("");
+    const user = getAuthUserFromToken(role);
     if (user?.role && user.role !== role) {
       return <Navigate to="/dashboard" replace />;
     }

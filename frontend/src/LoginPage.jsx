@@ -148,7 +148,6 @@ function LoginPage() {
     admin: { captchaId: "", prompt: "", expiresAt: "" }
   });
   const shakeTimerRef = useRef(null);
-  const submitTimerRef = useRef(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -160,7 +159,6 @@ function LoginPage() {
   useEffect(
     () => () => {
       if (shakeTimerRef.current) window.clearTimeout(shakeTimerRef.current);
-      if (submitTimerRef.current) window.clearTimeout(submitTimerRef.current);
     },
     []
   );
@@ -229,10 +227,6 @@ function LoginPage() {
     setRoleFormValues(nextRole, nextValues);
   };
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
-  };
-
   const loadCaptcha = async (targetRole = role) => {
     setCaptchaLoading(true);
     try {
@@ -259,7 +253,10 @@ function LoginPage() {
     }
   };
 
-  const submitLogin = async () => {
+  const handleLogin = async (event) => {
+    event.preventDefault();
+    console.log("Login clicked");
+
     if (loading) return;
 
     const nextErrors = validateLogin(role, forms[role]);
@@ -304,12 +301,12 @@ function LoginPage() {
         password: forms[role].password
       });
 
-      persistAuthTokenFromResponse(response, role);
+      console.log("Response:", response);
 
-      submitTimerRef.current = window.setTimeout(() => {
-        navigate(response.redirectTo || "/dashboard", { replace: true });
-      }, 700);
+      persistAuthTokenFromResponse(response, role);
+      navigate("/dashboard", { replace: true });
     } catch (error) {
+      console.error("Login error:", error);
       setLoading(false);
       setNotice({
         type: "error",
@@ -488,10 +485,7 @@ function LoginPage() {
 
                 <div key={role} className="role-form-enter">
                   <form
-                    onSubmit={(event) => {
-                      handleSubmit(event);
-                      submitLogin();
-                    }}
+                    onSubmit={handleLogin}
                     noValidate
                     className="space-y-3.5"
                   >

@@ -61,12 +61,22 @@ function extractTokenCandidate(response) {
   const tokenCandidates = [
     response.token,
     response.accessToken,
+    response.jwtToken,
     response.jwt,
     response.authToken,
+    response.access_token,
+    response.id_token,
+    response?.data?.data?.token,
+    response?.data?.data?.accessToken,
+    response?.data?.data?.jwtToken,
     response?.data?.token,
     response?.data?.accessToken,
+    response?.data?.jwtToken,
     response?.data?.jwt,
-    response?.data?.authToken
+    response?.data?.authToken,
+    response?.result?.token,
+    response?.result?.accessToken,
+    response?.result?.jwtToken
   ];
 
   return tokenCandidates.find((candidate) => typeof candidate === "string" && candidate.trim()) || "";
