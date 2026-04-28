@@ -141,6 +141,7 @@ export default function DocumentVault({ role = "student" }) {
   const [editingId, setEditingId] = useState("");
   const [dragging, setDragging] = useState(false);
   const [preview, setPreview] = useState(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState("");
   const [toast, setToast] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -155,6 +156,18 @@ export default function DocumentVault({ role = "student" }) {
     const timer = window.setTimeout(() => setToast(null), 2600);
     return () => window.clearTimeout(timer);
   }, [toast]);
+
+  useEffect(() => {
+    if (!form.file) {
+      setFilePreviewUrl("");
+      return undefined;
+    }
+
+    const nextPreviewUrl = URL.createObjectURL(form.file);
+    setFilePreviewUrl(nextPreviewUrl);
+
+    return () => URL.revokeObjectURL(nextPreviewUrl);
+  }, [form.file]);
 
   const certificates = role === "admin" ? adminCertificates : studentCertificates;
 
@@ -383,6 +396,28 @@ export default function DocumentVault({ role = "student" }) {
                         onChange={(event) => onPickFile(event.target.files?.[0])}
                       />
                     </div>
+                    {filePreviewUrl ? (
+                      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-sm">
+                        <div className="border-b border-slate-200 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                          Local Preview
+                        </div>
+                        <div className="flex items-center justify-center bg-white p-3">
+                          {getFileKind(form.file) === "Image" ? (
+                            <img
+                              src={filePreviewUrl}
+                              alt="Selected certificate preview"
+                              className="max-h-64 w-full rounded-xl object-contain"
+                            />
+                          ) : (
+                            <iframe
+                              src={filePreviewUrl}
+                              title="Selected PDF preview"
+                              className="h-80 w-full rounded-xl border-0 bg-white"
+                            />
+                          )}
+                        </div>
+                      </div>
+                    ) : null}
                   </label>
                   <label className="md:col-span-2 grid gap-2 text-sm font-medium text-slate-700">
                     Description
