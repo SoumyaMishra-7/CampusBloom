@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { apiPost } from "./api";
+import { persistAuthTokenFromResponse } from "./services/authSession.js";
 
 const roleMeta = {
   student: {
@@ -303,7 +304,7 @@ function App() {
     const endpoint = role === "student" ? "/api/auth/register/student" : "/api/auth/register/admin";
 
     apiPost(endpoint, forms[role])
-      .then(() => {
+      .then((response) => {
         setLoading(false);
         setSuccessRole(role);
         setNotice({
@@ -314,7 +315,8 @@ function App() {
               ? "Redirecting to the student dashboard..."
               : "Redirecting to the admin dashboard..."
         });
-        const redirectTo = role === "student" ? "/student-dashboard" : "/admin-dashboard";
+        const token = persistAuthTokenFromResponse(response, role);
+        const redirectTo = token ? "/dashboard" : role === "student" ? "/student-dashboard" : "/admin-dashboard";
         redirectTimerRef.current = window.setTimeout(() => {
           navigate(redirectTo, { replace: true });
         }, 700);
