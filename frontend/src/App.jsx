@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { apiPost } from "./api";
 
 const roleMeta = {
@@ -202,6 +203,7 @@ function EyeIcon({ open }) {
 }
 
 function App() {
+  const navigate = useNavigate();
   const [role, setRole] = useState("student");
   const [forms, setForms] = useState(initialForms);
   const [errors, setErrors] = useState({ student: {}, admin: {} });
@@ -314,7 +316,7 @@ function App() {
         });
         const redirectTo = role === "student" ? "/student-dashboard" : "/admin-dashboard";
         redirectTimerRef.current = window.setTimeout(() => {
-          window.location.href = redirectTo;
+          navigate(redirectTo, { replace: true });
         }, 700);
       })
       .catch((error) => {
@@ -349,13 +351,7 @@ function App() {
 
   const handleBackToHome = (event) => {
     event.preventDefault();
-
-    if (window.history.length > 1) {
-      window.history.back();
-      return;
-    }
-
-    window.location.href = "/";
+    navigate("/");
   };
 
   const togglePasswordVisibility = (fieldName) => {
@@ -386,7 +382,7 @@ function App() {
         }`}
       >
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <a href="/" className="group inline-flex items-center gap-2.5">
+          <Link to="/" className="group inline-flex items-center gap-2.5">
             <span className="relative inline-flex h-8 w-8 items-center justify-center rounded-xl border border-primary/20 bg-white/80 text-primary shadow-[0_8px_24px_rgba(79,70,229,0.16)]">
               <span className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/12 to-accent/10" />
               <img
@@ -399,7 +395,7 @@ function App() {
             <span className="text-sm font-semibold tracking-[-0.02em] text-ink">
               CampusBloom
             </span>
-          </a>
+          </Link>
 
           <a
             href="/"
@@ -656,12 +652,12 @@ function App() {
 
                 <p className="mt-6 text-center text-sm text-slate-600">
                   Already have an account?{" "}
-                  <a
-                    href="/login"
+                  <Link
+                    to="/login"
                     className="login-link relative inline-block font-semibold text-primary"
                   >
                     Login
-                  </a>
+                  </Link>
                 </p>
               </div>
 

@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { Provider } from "react-redux";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import App from "./App.jsx";
 import Homepage from "./Homepage.jsx";
 import LoginPage from "./LoginPage.jsx";
@@ -10,6 +11,8 @@ import StudentPublicProfile from "./StudentPublicProfile.jsx";
 import StudentSettingsPage from "./StudentSettingsPage.jsx";
 import AdminDashboard from "./AdminDashboard.jsx";
 import { CertificatesProvider } from "./certificates/CertificatesContext.jsx";
+import ProtectedRoute from "./ProtectedRoute.jsx";
+import { getAnyAuthToken, getAuthUserFromToken } from "./services/authSession.js";
 import store from "./store/index.js";
 import "./index.css";
 import "./homepage.css";
@@ -18,22 +21,6 @@ import "./student-certificates.css";
 import "./student-public-profile.css";
 import "./student-settings.css";
 import "./admin-dashboard.css";
-
-// Legacy entry aliases keep old bookmarked HTML routes working after the SPA cleanup.
-const pathAliases = {
-  "/index.html": "/",
-  "/homepage.html": "/",
-  "/login.html": "/login",
-  "/signup.html": "/signup",
-  "/get-started.html": "/signup",
-  "/admin-dashboard.html": "/admin-dashboard",
-  "/student-dashboard.html": "/student-dashboard",
-  "/student-achievements.html": "/student-achievements",
-  "/student-timeline.html": "/student-timeline",
-  "/student-certificates.html": "/student-certificates",
-  "/student-public-profile.html": "/student-public-profile",
-  "/student-settings.html": "/student-settings"
-};
 
 const routeMeta = {
   "/": {
@@ -48,6 +35,10 @@ const routeMeta = {
   "/signup": {
     title: "CampusBloom | Signup",
     description: "CampusBloom signup page for student and admin onboarding."
+  },
+  "/dashboard": {
+    title: "CampusBloom | Dashboard",
+    description: "CampusBloom dashboard for authenticated users."
   },
   "/admin-dashboard": {
     title: "CampusBloom | Admin Dashboard",
@@ -82,82 +73,156 @@ const routeMeta = {
   }
 };
 
-function normalizePathname() {
-  const rawPath = window.location.pathname.replace(/\/+$/, "") || "/";
-  return pathAliases[rawPath] || rawPath;
+function RouteMetaSync() {
+  const location = useLocation();
+
+  React.useEffect(() => {
+    const nextMeta = routeMeta[location.pathname] || routeMeta["/"];
+    document.title = nextMeta.title;
+
+    const descriptionTag = document.querySelector('meta[name="description"]');
+    if (descriptionTag) {
+      descriptionTag.setAttribute("content", nextMeta.description);
+    }
+  }, [location.pathname]);
+
+  return null;
 }
 
-function syncDocumentMeta(path) {
-  const nextMeta = routeMeta[path] || routeMeta["/"];
-  document.title = nextMeta.title;
-
-  const descriptionTag = document.querySelector('meta[name="description"]');
-  if (descriptionTag) {
-    descriptionTag.setAttribute("content", nextMeta.description);
+function PublicOnlyRoute({ children }) {
+  const token = getAnyAuthToken();
+  if (token) {
+    return <Navigate to="/dashboard" replace />;
   }
+
+  return children;
 }
 
-function StudentRoutes() {
-  const rawPath = window.location.pathname.replace(/\/+$/, "") || "/";
-  const path = normalizePathname();
-
-  if (path !== rawPath) {
-    window.history.replaceState({}, "", path);
+function DashboardRedirect() {
+  const user = getAuthUserFromToken("");
+  if (user?.role === "admin") {
+    return <Navigate to="/admin-dashboard" replace />;
   }
 
-  syncDocumentMeta(path);
+  return <Navigate to="/student-dashboard" replace />;
+}
 
-  // Public routes
-  if (path === "/") {
-    return <Homepage />;
-  }
+function AppRoutes() {
+  return (
+    <>
+      <RouteMetaSync />
+      <Routes>
+        <Route path="/" element={<Homepage />} />
+        <Route
+          path="/login"
+          element={(
+            <PublicOnlyRoute>
+              <LoginPage />
+            </PublicOnlyRoute>
+          )}
+        />
+        <Route
+          path="/signup"
+          element={(
+            <PublicOnlyRoute>
+              <App />
+            </PublicOnlyRoute>
+          )}
+        />
 
-  if (path === "/signup" || path === "/get-started") {
-    return <App />;
-  }
+        <Route
+          path="/dashboard"
+          element={(
+            <ProtectedRoute>
+              <DashboardRedirect />
+            </ProtectedRoute>
+          )}
+        />
 
-  if (path === "/login") {
-    return <LoginPage />;
-  }
+        <Route
+          path="/student-dashboard"
+          element={(
+            <ProtectedRoute role="student">
+              <StudentDashboard initialView="dashboard" />
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/student-achievements"
+          element={(
+            <ProtectedRoute role="student">
+              <StudentDashboard initialView="achievements" />
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/student-timeline"
+          element={(
+            <ProtectedRoute role="student">
+              <StudentDashboard initialView="timeline" />
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/student-certificates"
+          element={(
+            <ProtectedRoute role="student">
+              <StudentCertificatesPage />
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/student-public-profile"
+          element={(
+            <ProtectedRoute role="student">
+              <StudentPublicProfile />
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/student-settings"
+          element={(
+            <ProtectedRoute role="student">
+              <StudentSettingsPage />
+            </ProtectedRoute>
+          )}
+        />
 
-  // Student routes
-  if (path === "/student-dashboard") {
-    return <StudentDashboard initialView="dashboard" />;
-  }
+        <Route
+          path="/admin-dashboard"
+          element={(
+            <ProtectedRoute role="admin">
+              <AdminDashboard />
+            </ProtectedRoute>
+          )}
+        />
 
-  if (path === "/student-achievements") {
-    return <StudentDashboard initialView="achievements" />;
-  }
+        <Route path="/index.html" element={<Navigate to="/" replace />} />
+        <Route path="/homepage.html" element={<Navigate to="/" replace />} />
+        <Route path="/login.html" element={<Navigate to="/login" replace />} />
+        <Route path="/signup.html" element={<Navigate to="/signup" replace />} />
+        <Route path="/get-started.html" element={<Navigate to="/signup" replace />} />
+        <Route path="/admin-dashboard.html" element={<Navigate to="/admin-dashboard" replace />} />
+        <Route path="/student-dashboard.html" element={<Navigate to="/student-dashboard" replace />} />
+        <Route path="/student-achievements.html" element={<Navigate to="/student-achievements" replace />} />
+        <Route path="/student-timeline.html" element={<Navigate to="/student-timeline" replace />} />
+        <Route path="/student-certificates.html" element={<Navigate to="/student-certificates" replace />} />
+        <Route path="/student-public-profile.html" element={<Navigate to="/student-public-profile" replace />} />
+        <Route path="/student-settings.html" element={<Navigate to="/student-settings" replace />} />
 
-  if (path === "/student-timeline") {
-    return <StudentDashboard initialView="timeline" />;
-  }
-
-  if (path === "/student-certificates") {
-    return <StudentCertificatesPage />;
-  }
-
-  if (path === "/student-public-profile") {
-    return <StudentPublicProfile />;
-  }
-
-  if (path === "/student-settings") {
-    return <StudentSettingsPage />;
-  }
-
-  // Admin routes
-  if (path === "/admin-dashboard") {
-    return <AdminDashboard />;
-  }
-
-  return <Homepage />;
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </>
+  );
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <Provider store={store}>
       <CertificatesProvider>
-        <StudentRoutes />
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
       </CertificatesProvider>
     </Provider>
   </React.StrictMode>

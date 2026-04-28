@@ -1,13 +1,11 @@
 const DEFAULT_API_BASE_URL = "https://campusbloom-backend.onrender.com";
 
 function resolveApiBaseUrl() {
-  const configured = import.meta.env.VITE_API_BASE_URL?.trim();
+  const configured =
+    import.meta.env.VITE_API_URL?.trim() ||
+    import.meta.env.VITE_API_BASE_URL?.trim();
   if (configured) {
     return configured.replace(/\/$/, "");
-  }
-
-  if (window.location.port === "8080") {
-    return "";
   }
 
   return DEFAULT_API_BASE_URL;

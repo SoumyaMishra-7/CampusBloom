@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { apiGet, apiPost } from "./api";
 import { persistAuthTokenFromResponse } from "./services/authSession.js";
 
@@ -130,6 +131,7 @@ function validateLogin(role, values) {
 }
 
 function LoginPage() {
+  const navigate = useNavigate();
   const [role, setRole] = useState("student");
   const [forms, setForms] = useState(initialForms);
   const [errors, setErrors] = useState({ student: {}, admin: {} });
@@ -305,7 +307,7 @@ function LoginPage() {
       persistAuthTokenFromResponse(response, role);
 
       submitTimerRef.current = window.setTimeout(() => {
-        window.location.href = response.redirectTo;
+        navigate(response.redirectTo || "/dashboard", { replace: true });
       }, 700);
     } catch (error) {
       setLoading(false);
@@ -325,13 +327,7 @@ function LoginPage() {
 
   const handleBackToHome = (event) => {
     event.preventDefault();
-
-    if (window.history.length > 1) {
-      window.history.back();
-      return;
-    }
-
-    window.location.href = "/";
+    navigate("/");
   };
 
   const togglePasswordVisibility = () => {
@@ -364,7 +360,7 @@ function LoginPage() {
         }`}
       >
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <a href="/" className="group inline-flex items-center gap-2.5">
+          <Link to="/" className="group inline-flex items-center gap-2.5">
             <span className="relative inline-flex h-8 w-8 items-center justify-center rounded-xl border border-primary/20 bg-white/80 text-primary shadow-[0_8px_24px_rgba(79,70,229,0.16)]">
               <span className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/12 to-accent/10" />
               <img
@@ -375,7 +371,7 @@ function LoginPage() {
               />
             </span>
             <span className="text-sm font-semibold tracking-[-0.02em] text-ink">CampusBloom</span>
-          </a>
+          </Link>
 
           <a
             href="/"
@@ -629,9 +625,9 @@ function LoginPage() {
 
                 <p className="mt-6 text-center text-sm text-slate-600">
                   Don&apos;t have an account?{" "}
-                  <a href="/signup" className="login-link relative inline-block font-semibold text-primary">
+                  <Link to="/signup" className="login-link relative inline-block font-semibold text-primary">
                     Get Started
-                  </a>
+                  </Link>
                 </p>
               </div>
 
