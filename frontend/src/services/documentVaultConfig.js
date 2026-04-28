@@ -1,9 +1,9 @@
-const DOCUMENT_VAULT_FALLBACK_URL = "http://127.0.0.1:4000";
+const DOCUMENT_VAULT_FALLBACK_URL = "https://campusbloom-backend.onrender.com";
 
 function sanitizeBaseUrl(value) {
   const text = String(value || "").trim().replace(/\/$/, "");
   if (!text) return "";
-  return text.replace("http://localhost:4000", "http://127.0.0.1:4000");
+  return text;
 }
 
 export function getDocumentVaultBaseUrl() {
