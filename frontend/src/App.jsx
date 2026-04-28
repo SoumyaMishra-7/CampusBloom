@@ -353,7 +353,7 @@ function App() {
 
   const handleBackToHome = (event) => {
     event.preventDefault();
-    navigate("/");
+    navigate("/home");
   };
 
   const togglePasswordVisibility = (fieldName) => {
@@ -384,7 +384,7 @@ function App() {
         }`}
       >
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link to="/" className="group inline-flex items-center gap-2.5">
+          <Link to="/home" className="group inline-flex items-center gap-2.5">
             <span className="relative inline-flex h-8 w-8 items-center justify-center rounded-xl border border-primary/20 bg-white/80 text-primary shadow-[0_8px_24px_rgba(79,70,229,0.16)]">
               <span className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/12 to-accent/10" />
               <img
@@ -400,7 +400,7 @@ function App() {
           </Link>
 
           <a
-            href="/"
+            href="/home"
             onClick={handleBackToHome}
             className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/70 px-3.5 py-2 text-sm font-medium text-slate-600 shadow-sm backdrop-blur transition-all duration-300 ease-premium hover:-translate-y-0.5 hover:border-primary/25 hover:text-primary"
           >

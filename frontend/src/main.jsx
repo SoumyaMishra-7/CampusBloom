@@ -24,6 +24,10 @@ import "./admin-dashboard.css";
 
 const routeMeta = {
   "/": {
+    title: "CampusBloom | Login",
+    description: "CampusBloom login page for student and admin access."
+  },
+  "/home": {
     title: "CampusBloom",
     description:
       "CampusBloom is a digital extracurricular achievement management and portfolio platform for educational institutions."
@@ -112,7 +116,8 @@ function AppRoutes() {
     <>
       <RouteMetaSync />
       <Routes>
-        <Route path="/" element={<Homepage />} />
+        <Route path="/" element={<LoginPage />} />
+        <Route path="/home" element={<Homepage />} />
         <Route
           path="/login"
           element={(
@@ -198,7 +203,7 @@ function AppRoutes() {
         />
 
         <Route path="/index.html" element={<Navigate to="/" replace />} />
-        <Route path="/homepage.html" element={<Navigate to="/" replace />} />
+        <Route path="/homepage.html" element={<Navigate to="/home" replace />} />
         <Route path="/login.html" element={<Navigate to="/login" replace />} />
         <Route path="/signup.html" element={<Navigate to="/signup" replace />} />
         <Route path="/get-started.html" element={<Navigate to="/signup" replace />} />
