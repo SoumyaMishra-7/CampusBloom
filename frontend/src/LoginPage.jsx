@@ -304,6 +304,7 @@ function LoginPage() {
       console.log("Response:", response);
 
       persistAuthTokenFromResponse(response, role);
+      console.log("Token:", localStorage.getItem("token"));
       navigate("/dashboard", { replace: true });
     } catch (error) {
       console.error("Login error:", error);

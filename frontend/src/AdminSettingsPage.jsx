@@ -221,6 +221,7 @@ export default function AdminSettingsPage({ initialTab = "profile" }) {
     try {
       localStorage.removeItem("cb.admin.session");
       localStorage.removeItem("cb.admin.authToken");
+      localStorage.removeItem("token");
       sessionStorage.clear();
     } catch {}
     setTimeout(() => {
@@ -245,6 +246,7 @@ export default function AdminSettingsPage({ initialTab = "profile" }) {
         localStorage.removeItem("cb.admin.authToken");
         localStorage.removeItem("cb.authToken");
         localStorage.removeItem("authToken");
+        localStorage.removeItem("token");
         sessionStorage.clear();
       } catch {}
       setTimeout(() => {

@@ -1,7 +1,8 @@
 const TOKEN_KEYS = {
   admin: "cb.admin.authToken",
   student: "cb.authToken",
-  fallback: "authToken"
+  fallback: "authToken",
+  legacy: "token"
 };
 
 function parseJwtPayload(token) {
@@ -28,13 +29,29 @@ export function getAuthTokenForRole(role) {
 
   const local = window.localStorage;
   if (role === "admin") {
-    return local.getItem(TOKEN_KEYS.admin) || local.getItem(TOKEN_KEYS.fallback) || "";
+    return (
+      local.getItem(TOKEN_KEYS.admin) ||
+      local.getItem(TOKEN_KEYS.fallback) ||
+      local.getItem(TOKEN_KEYS.legacy) ||
+      ""
+    );
   }
   if (role === "student") {
-    return local.getItem(TOKEN_KEYS.student) || local.getItem(TOKEN_KEYS.fallback) || "";
+    return (
+      local.getItem(TOKEN_KEYS.student) ||
+      local.getItem(TOKEN_KEYS.fallback) ||
+      local.getItem(TOKEN_KEYS.legacy) ||
+      ""
+    );
   }
 
-  return local.getItem(TOKEN_KEYS.fallback) || local.getItem(TOKEN_KEYS.admin) || local.getItem(TOKEN_KEYS.student) || "";
+  return (
+    local.getItem(TOKEN_KEYS.fallback) ||
+    local.getItem(TOKEN_KEYS.admin) ||
+    local.getItem(TOKEN_KEYS.student) ||
+    local.getItem(TOKEN_KEYS.legacy) ||
+    ""
+  );
 }
 
 export function getAnyAuthToken() {
@@ -85,10 +102,14 @@ function extractTokenCandidate(response) {
 export function persistAuthTokenFromResponse(response, role) {
   if (typeof window === "undefined") return "";
   const token = extractTokenCandidate(response).trim();
-  if (!token) return "";
-
   const roleKey = getRoleTokenKey(role);
-  window.localStorage.setItem(roleKey, token);
-  window.localStorage.setItem(TOKEN_KEYS.fallback, token);
+  if (token) {
+    window.localStorage.setItem(roleKey, token);
+    window.localStorage.setItem(TOKEN_KEYS.fallback, token);
+    window.localStorage.setItem(TOKEN_KEYS.legacy, token);
+    return token;
+  }
+
+  window.localStorage.setItem(TOKEN_KEYS.legacy, "true");
   return token;
 }

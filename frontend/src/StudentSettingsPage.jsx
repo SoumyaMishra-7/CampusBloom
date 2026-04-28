@@ -241,6 +241,7 @@ function StudentSettingsPage() {
         localStorage.removeItem("cb.authToken");
         localStorage.removeItem("authToken");
         localStorage.removeItem("cb.admin.authToken");
+        localStorage.removeItem("token");
         sessionStorage.clear();
       } catch {}
       setDeleteConfirmOpen(false);

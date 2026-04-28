@@ -15,12 +15,15 @@ const API_BASE_URL = resolveApiBaseUrl();
 
 function getAuthToken() {
   if (typeof window === "undefined") return "";
-  return (
+  const token = (
     window.localStorage.getItem("cb.admin.authToken") ||
     window.localStorage.getItem("cb.authToken") ||
+    window.localStorage.getItem("token") ||
     window.localStorage.getItem("authToken") ||
     ""
   );
+
+  return token === "true" ? "" : token;
 }
 
 async function request(path, options = {}) {
